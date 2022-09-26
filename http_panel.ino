@@ -346,16 +346,16 @@ void loop() {
             
             // Loop trough json configured tasks and exec setup functions, to exec only once
             DynamicJsonDocument setups(1024);
-			setups = json_user_panel["setups"];
+            setups = json_user_panel["setups"];
             for(int i=0; i<setups.size(); i++) {
                 String setupAction = setups[i]["action"]; // mode,...
                 String setupValue  = setups[i]["value"];
                 //
                 if( setupAction=="mode" ) {
-					int gpio = setups[i]["gpio"];
-					pinMode(gpio,(setupValue=="OUTPUT"?OUTPUT:INPUT));
-				}
-		    }
+                    int gpio = setups[i]["gpio"];
+                    pinMode(gpio,(setupValue=="OUTPUT"?OUTPUT:INPUT));
+                }
+            }
             free( tmp_confs );
         }
         // Reset uploaded panel
