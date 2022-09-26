@@ -17,6 +17,19 @@ Your control panel should be html file with some additions. Addition is new HTML
 4.) choose your control panel
 
 
+# Controller JSON configuration definitions & tree:
+- setups   ( actions defined here are executed only once, when panel is installed. Here should exec functions like: pinMode(xx,OUTPUT) etc..
+    - gpio
+    - action
+    - value
+- tasks    ( these actions are checked and executed when happen specific request. to start/stop motor, light etc. )
+    - title
+    - request
+    - actions
+        - gpio
+        - value
+        - type
+
 # Options
 - http://192.168.4.1/reset      # To reset to startup panel.
 - (Other options are used trough html panel "upload_file_form.html" or if user create his panel with his configurations trough JSON.)
