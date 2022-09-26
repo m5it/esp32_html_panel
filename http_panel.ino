@@ -344,7 +344,7 @@ void loop() {
             deserializeJson(json_user_panel, sson_user_panel);
             tasks = json_user_panel["tasks"];
             
-            // Loop trough json configured tasks and exec setup functions, to exec only once
+            // Loop trough json configured setups, functions that should be executed only once. Ex.: pinMode(),...
             DynamicJsonDocument setups(1024);
             setups = json_user_panel["setups"];
             for(int i=0; i<setups.size(); i++) {
