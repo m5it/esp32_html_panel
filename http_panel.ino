@@ -9,10 +9,6 @@
  * ------
  * G00d luck to all***
  * t3ch
- * 
- * last updates:
- * (24.9.22, 25.9.22)
- * - startup...
  * */
 #include <Arduino.h>
 #include <ArduinoJson.h> // https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
