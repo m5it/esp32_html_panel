@@ -1,6 +1,6 @@
 Arduino http control panel. ( In developement but have it logic..:) )
 
-How it work:
+# How it work:
 
 1.) copy/paste "http_panel.ino" into your ArduinoIDE compiler.<br>
 2.) upload<br>
@@ -14,8 +14,12 @@ Control panel should be html file with some additions. Addition is new HTML Bloc
 4.) choose your control panel
 
 
+# Options
+- http://192.168.4.1/reset      # To reset to startup panel.
+- (Other options are used trough html panel "upload_file_form.html" or if user create his panel with his configurations trough JSON.)
 
-File definitions:
+
+# File definitions:
  - http_panel.ino    ( Arduino/ESP32 code that runs server and create wifi station )
  - ghexc.php         ( Script that is used to convert html file into C Programming string arrays so it can be included into c code Ex.: char yourwar[]="\x1\x2\x3"; )
  - upload_file_form.php is converted with ghexc.php and used with variable "char html_start_panel[] = ..."
