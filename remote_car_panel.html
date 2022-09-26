@@ -1,0 +1,45 @@
+<arduino>
+{"test":"This is just a test...","tasks":[{"title":"Start motor A","request":"/MOTOR_A_ON", "actions":[{"gpio":27,"value":0,"type":"DW","initialized":0},{"gpio":14,"value":1,"type":"DW","initialized":0},{"gpio":13,"value":100,"type":"AW","initialized":0}]},{"title":"Stop motor A","request":"/MOTOR_A_OFF", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":0,"type":"DW"}]}]}
+</arduino>
+<html>
+	<head>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+		<title>remote car panel</title>
+		<style>
+		.leftSide {}
+		.leftSide .circle {
+			border-radius:60px;
+			border:solid 5px black;
+		}
+		.rightSide {}
+		</style>
+
+<script>
+function onLoad(e) {
+	if( document.location.pathname!="/" || document.location.search!="" ) {
+		window.history.replaceState({},"","/");
+	}
+}
+window.onload = function(e) { onLoad(e); }
+</script>
+	</head>
+	
+	<body>
+		
+		<div align="center"><h3>Example of simple html control panel for Arduino or ESP32...</h3></div>
+		
+		<br>
+		
+		<a href="/MOTOR_A_ON">Start motor A</a> <br>
+		<a href="/MOTOR_A_OFF">Stop motor A</a> <br>
+		
+		<!-- left side is used to move car left and right -->
+		<div class="leftSide">
+			<div class="circle"></div>
+		</div>
+		
+		<!-- right side is used to move car infront and back -->
+		<div class="rightSide">
+		</div>
+	</body>
+</html>
