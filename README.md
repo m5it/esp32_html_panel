@@ -5,6 +5,11 @@ ESP32 / Arduino http control panel. ( In developement but have it logic..:) )
 # Screenshots of v0.1b
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen1_v0.1.png)
 
+![alt text](https://github.com/m5it/http_panel/blob/main/screen2_v0.1.png)
+
+![alt text](https://github.com/m5it/http_panel/blob/main/screen3_v0.1.png)
+
+
 # How it work:
 
 1.) copy/paste "http_panel.ino" into your ArduinoIDE compiler.<br>
