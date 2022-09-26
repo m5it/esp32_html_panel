@@ -1,4 +1,4 @@
-Arduino http control panel.
+Arduino http control panel. ( In developement but have it logic..:) )
 
 How it work:
 
