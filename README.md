@@ -2,13 +2,6 @@ ESP32 / Arduino http control panel. ( In developement but have it logic..:) )
 
 (tested on ESP32 by me)
 
-# Screenshots of v0.1b
-![alt text](https://github.com/m5it/http_panel/blob/main/screen1_v0.1.png)
-
-![alt text](https://github.com/m5it/http_panel/blob/main/screen2_v0.1.png)
-
-![alt text](https://github.com/m5it/http_panel/blob/main/screen3_v0.1.png)
-
 
 # How it work:
 
@@ -53,3 +46,11 @@ Your control panel should be html file with some additions. Addition is new HTML
 
 
 Thanks for watching.*
+
+
+# Screenshots of v0.1b
+![alt text](https://github.com/m5it/http_panel/blob/main/screen1_v0.1.png)
+
+![alt text](https://github.com/m5it/http_panel/blob/main/screen2_v0.1.png)
+
+![alt text](https://github.com/m5it/http_panel/blob/main/screen3_v0.1.png)
