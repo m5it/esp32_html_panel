@@ -2,8 +2,8 @@ Arduino http control panel.
 
 How it work:
 
-1.) copy/paste "http_panel.ino" into your ArduinoIDE compiler.
-2.) upload
+1.) copy/paste "http_panel.ino" into your ArduinoIDE compiler.<br>
+2.) upload<br>
 3.) navigate with browser to 192.168.4.1
 
 Control panel should be html file with some additions. Addition is new HTML Block "<arduino></arduino>" inside of block we should define controller controls for ex.:
