@@ -382,57 +382,57 @@ void loop() {
         //---------------------------------
         // Loop trough json configured tasks and check if request match 
         for(int i=0; i<tasks.size(); i++) {
-			String taskTitle   = tasks[i]["title"];
-			String taskRequest = tasks[i]["request"];
-			DynamicJsonDocument actions(1024);
-			actions            = tasks[i]["actions"];
-			
-			Serial.println("taskTitle: ");
-			Serial.println(taskTitle);
-			Serial.println("taskRequest: ");
-			Serial.println(taskRequest);
-			
-			// Request match for action!
-			if( match(cmd[1],c2c(taskRequest.c_str()))==1 ) {
-				Serial.println("DEBUG CORRECT TASK REQUEST!!! Firing!!! Num actions: ");
-				Serial.println(actions.size());
-				// Loop trough request actions and exec them..
-				for(int j=0; j<actions.size(); j++) {
-					Serial.println("Entering action...");
-					// Ex. action: {"gpio":27,"value":0,"type":"DW"}
-					// value 0 = LOW, 1=HIGH
-					// todo DW = digitalWrite, DR = digitalRead, AW = analogWrite, AR = analogRead
-					int gpio         = actions[j]["gpio"];
-					int value        = actions[j]["value"];
-					String type      = actions[j]["type"];
-					Serial.println(gpio);
-					Serial.println(value);
-					Serial.println(type);
-					//
-					if( type=="DW" ) {
-						Serial.println("DEBUG FIRING DW!");
-						if( actions[j]["initialized"]==0 ) {
-							actions[j]["initialized"] = 1;
-							pinMode(gpio,OUTPUT);
-						}
-						digitalWrite( gpio, value );
-					}
-					//
-					else if( type=="AW" ) {
-						Serial.println("DEBUG FIRING AW!");
-						if( actions[j]["initialized"]==0 ) {
-							actions[j]["initialized"] = 1;
-							pinMode(gpio,OUTPUT);
-						}
-						analogWrite( gpio, value );
-			            //ledcWrite(gpio, value);
-					}
-					else {
-						Serial.println("DEBUG NOT CORRECT TYPE...");
-					}
-				}
-			}
-		}
+            String taskTitle   = tasks[i]["title"];
+            String taskRequest = tasks[i]["request"];
+            DynamicJsonDocument actions(1024);
+            actions            = tasks[i]["actions"];
+            
+            Serial.println("taskTitle: ");
+            Serial.println(taskTitle);
+            Serial.println("taskRequest: ");
+            Serial.println(taskRequest);
+            
+            // Request match for action!
+            if( match(cmd[1],c2c(taskRequest.c_str()))==1 ) {
+                Serial.println("DEBUG CORRECT TASK REQUEST!!! Firing!!! Num actions: ");
+                Serial.println(actions.size());
+                // Loop trough request actions and exec them..
+                for(int j=0; j<actions.size(); j++) {
+                    Serial.println("Entering action...");
+                    // Ex. action: {"gpio":27,"value":0,"type":"DW"}
+                    // value 0 = LOW, 1=HIGH
+                    // todo DW = digitalWrite, DR = digitalRead, AW = analogWrite, AR = analogRead
+                    int gpio         = actions[j]["gpio"];
+                    int value        = actions[j]["value"];
+                    String type      = actions[j]["type"];
+                    Serial.println(gpio);
+                    Serial.println(value);
+                    Serial.println(type);
+                    //
+                    if( type=="DW" ) {
+                        Serial.println("DEBUG FIRING DW!");
+                        if( actions[j]["initialized"]==0 ) {
+                            actions[j]["initialized"] = 1;
+                            pinMode(gpio,OUTPUT);
+                        }
+                        digitalWrite( gpio, value );
+                    }
+                    //
+                    else if( type=="AW" ) {
+                        Serial.println("DEBUG FIRING AW!");
+                        if( actions[j]["initialized"]==0 ) {
+                            actions[j]["initialized"] = 1;
+                            pinMode(gpio,OUTPUT);
+                        }
+                        analogWrite( gpio, value );
+                        //ledcWrite(gpio, value);
+                    }
+                    else {
+                        Serial.println("DEBUG NOT CORRECT TYPE...");
+                    }
+                }
+            }
+        }
         
         //--
         // Handle response
