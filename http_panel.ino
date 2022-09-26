@@ -13,8 +13,9 @@
 #include <Arduino.h>
 #include <ArduinoJson.h> // https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 #include <GParser.h>     // https://github.com/GyverLibs/GParser
+#include <AceCRC.h>      // https://github.com/bxparks/AceCRC
+#include <Regexp.h>      // https://github.com/nickgammon/Regexp
 #include "WiFi.h"
-#include <Regexp.h>
 #include <stdio.h>
 
 //--
@@ -155,7 +156,7 @@ char* str_replace(const char* s, const char* oldW, const char* newW);
 char *strstrip(char *s);
 void phex(const char* s);
 char * c2c(const char *from);
-
+char * crc32b(const char* from);
 
 
 
@@ -197,6 +198,8 @@ void setup() {
     //
     Serial.println("Hello, world...");
     Serial.println(IP);
+    Serial.println("Test crc32b: ");
+    Serial.println( crc32b("Hello, World!") );
     //
     server.begin();
 }
@@ -341,6 +344,18 @@ void loop() {
             deserializeJson(json_user_panel, sson_user_panel);
             tasks = json_user_panel["tasks"];
             
+            // Loop trough json configured tasks and exec setup functions, to exec only once
+            DynamicJsonDocument setups(1024);
+			setups = json_user_panel["setups"];
+            for(int i=0; i<setups.size(); i++) {
+                String setupAction = setups[i]["action"]; // mode,...
+                String setupValue  = setups[i]["value"];
+                //
+                if( setupAction=="mode" ) {
+					int gpio = setups[i]["gpio"];
+					pinMode(gpio,(setupValue=="OUTPUT"?OUTPUT:INPUT));
+				}
+		    }
             free( tmp_confs );
         }
         // Reset uploaded panel
@@ -383,19 +398,11 @@ void loop() {
                     //
                     if( type=="DW" ) {
                         Serial.println("DEBUG FIRING DW!");
-                        if( actions[j]["initialized"]==0 ) {
-                            actions[j]["initialized"] = 1;
-                            pinMode(gpio,OUTPUT);
-                        }
                         digitalWrite( gpio, value );
                     }
                     //
                     else if( type=="AW" ) {
                         Serial.println("DEBUG FIRING AW!");
-                        if( actions[j]["initialized"]==0 ) {
-                            actions[j]["initialized"] = 1;
-                            pinMode(gpio,OUTPUT);
-                        }
                         analogWrite( gpio, value );
                         //ledcWrite(gpio, value);
                     }
@@ -603,5 +610,24 @@ char * c2c(const char *from) {
     char  *ret = (char*)malloc(strlen(from)+1);
     //char ret[strlen(from)+1];
     strcpy(ret, from);
+    return ret;
+}
+
+//
+char * crc32b(const char* from) {
+    static const size_t LENGTH = sizeof(from) - 1;
+    using namespace ace_crc::crc32_byte;//crc32_nibblem;//crc16ccitt_nibble;
+    //
+    crc_t crc = crc_init();
+    crc = crc_update(crc, from, LENGTH);
+    crc = crc_finalize(crc);
+    //Serial.print("0x");
+    //Serial.println((unsigned long) crc, 16);
+
+    //crc = crc_calculate(CHECK_STRING, LENGTH);
+    //Serial.print("0x");
+    //Serial.println((unsigned long) crc, 16);
+    char * ret = (char*)malloc(11);
+    sprintf(ret,"%X",(unsigned long)crc);
     return ret;
 }
