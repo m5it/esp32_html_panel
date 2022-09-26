@@ -1,4 +1,6 @@
-Arduino http control panel. ( In developement but have it logic..:) )
+ESP32 / Arduino http control panel. ( In developement but have it logic..:) )
+
+(tested on ESP32 by me)
 
 # How it work:
 
