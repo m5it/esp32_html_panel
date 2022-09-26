@@ -31,13 +31,6 @@ IPAddress IP;
 WiFiServer server(80);
 
 //--
-// Pin & motor configs. 
-// Motor A
-int motor1Pin1 = 27; 
-int motor1Pin2 = 14; 
-int enable1Pin = 13; 
-
-//--
 //
 DynamicJsonDocument json_user_panel(4048);
 DynamicJsonDocument tasks(4048);
@@ -392,10 +385,6 @@ void loop() {
 			String taskTitle   = tasks[i]["title"];
 			String taskRequest = tasks[i]["request"];
 			DynamicJsonDocument actions(1024);
-			//String tmpx;
-			//serializeJson(tasks[i],tmpx);
-			//Serial.println(tmpx);
-			//deserializeJson(actions, tmpx);
 			actions            = tasks[i]["actions"];
 			
 			Serial.println("taskTitle: ");
@@ -481,22 +470,7 @@ void loop() {
     }
 
     Serial.println("outloop...");
-    delay(5000);
-
-    //
-    /*Serial.println("Moving Forward");
-    // Enable motor A
-    digitalWrite(motor1Pin1, LOW);
-    digitalWrite(motor1Pin2, HIGH); 
-    analogWrite(enable1Pin,100); // Set motor speed
-    
-    delay(2000);
-
-    //
-    Serial.println("Motor stopped");
-    digitalWrite(motor1Pin1, LOW);
-    digitalWrite(motor1Pin2, LOW);
-    delay(1000);*/
+    delay(1500);
 }
 
 
