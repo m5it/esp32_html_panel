@@ -143,14 +143,7 @@ char html_start_panel[] =
 "\x69\x6c\x65\x22\x20\x6f\x6e\x63\x68\x61\x6e\x67\x65\x3d\x22\x6c\x6f\x61\x64\x46\x69\x6c\x65\x28\x74\x68\x69\x73\x29\x3b\x22"
 "\x3e\xa\x3c\x2f\x66\x6f\x72\x6d\x3e\xa\xa\x3c\x2f\x62\x6f\x64\x79\x3e\xa\x3c\x2f\x68\x74\x6d\x6c\x3e\xa";
 
-//--
-// Structure for uploaded files that can be handled
-/*typedef struct {
-  String fileName    = "";
-  String fileContent = "";
-} file_object;
-//
-file_object files[1];*/
+
 
 //--
 // MISSING C FUNCTIonS START
@@ -194,15 +187,8 @@ void htmlDocument(WiFiClient cli, String html) {
 // Default Arduino functions START
 //---------------------------------
 void setup() {
-  //--
-  Serial.begin(115200);
-  
-  //--
-  // sets the pins as outputs:
-  //pinMode(motor1Pin1, OUTPUT);
-  //pinMode(motor1Pin2, OUTPUT);
-  //pinMode(enable1Pin, OUTPUT);
-
+    //--
+    Serial.begin(115200);
     //
     WiFi.mode(WIFI_AP);
     WiFi.softAP(ssid, pwd);
@@ -213,16 +199,6 @@ void setup() {
     Serial.println(IP);
     //
     server.begin();
-    
-    /*char json[] = "{\"sensor\":\"gps\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
-
-    DynamicJsonDocument doc(1024);
-    deserializeJson(doc, json);
-
-    const char* sensor = doc["sensor"];
-    long time          = doc["time"];
-    double latitude    = doc["data"][0];
-    double longitude   = doc["data"][1];*/
 }
 
 void loop() {
