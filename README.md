@@ -6,7 +6,7 @@ Arduino http control panel. ( In developement but have it logic..:) )
 2.) upload<br>
 3.) navigate with browser to 192.168.4.1
 
-Control panel should be html file with some additions. Addition is new HTML Block "\<arduino>\</arduino>". Inside of block we should define controller controls for ex.:
+Your control panel should be html file with some additions. Addition is new HTML Block "\<arduino>\</arduino>". Inside of block we should define controller controls for ex.:
 
 \<arduino>
 
