@@ -29,6 +29,16 @@ WiFiServer server(80);
 
 //--
 //
+struct statistics {
+	int num_loops   = 0;
+	int num_clients = 0;
+	int num_restarts = 0;
+};
+statistics stats;
+int chk_cli_restart = 0;
+int max_cli_restart = 50; // restart server after X connections (because of x bug, server stop working)
+
+//
 DynamicJsonDocument json_user_panel(4048);
 DynamicJsonDocument tasks(4048);
 String sson_user_panel = "";
@@ -192,8 +202,11 @@ void setup() {
     Serial.begin(115200);
     //
     WiFi.mode(WIFI_AP);
+    delay(100);
     WiFi.softAP(ssid, pwd);
+    delay(200);
     IP = WiFi.softAPIP(); //lol :) all is lol so if this is c then.. owyea! :)
+    delay(100);
     //--
     //
     Serial.println("Hello, world...");
@@ -289,8 +302,9 @@ void loop() {
                     else if( match(c2c(line.c_str()),"^Content.Length.*")==1 ) {
                         Serial.println("DEBUG CMD Content-Type LINE");
                         //
-                        char ** tmp = split(line.c_str(),": ");
-                        length = tmp[1];
+                        char ** tmpx = split(line.c_str(),": ");
+                        length = tmpx[1];
+                        free(tmpx);
                     }
                 }
                 // body end
@@ -304,9 +318,10 @@ void loop() {
                     Serial.println(line);
                     body += line+"\n";
                     
-                    char *tmp = (char*)malloc(128);
-                    sprintf(tmp,"DEBUG BODY ADD/END? body.length: %i vs length: %i\n",body.length(), strtol(length.c_str(), NULL, 2));
-                    Serial.println(tmp);
+                    char *tmpmsg = (char*)malloc(128);
+                    sprintf(tmpmsg,"DEBUG BODY ADD/END? body.length: %i vs length: %i\n",body.length(), strtol(length.c_str(), NULL, 2));
+                    Serial.println(tmpmsg);
+                    free(tmpmsg);
                     
                     //if( length!="" && body.length() >= atoi(length.c_str()) ) {
                     if( body.length() >= strtol(length.c_str(), NULL, 2) ) {
@@ -478,10 +493,28 @@ void loop() {
         //Serial.println( sson_user_panel );
         //
         cli.stop();
-        //cli.flush();
+        cli.flush();
+        //
+        stats.num_clients++;
+        
+        //
+	    if( chk_cli_restart >= max_cli_restart ) {
+			Serial.println("Debug Restarting Server !");
+			chk_cli_restart = 0;
+			//server.reset();
+			stats.num_restarts++;
+		}
+		else {
+			chk_cli_restart++;
+		}
     }
-
-    Serial.println("outloop...");
+    //
+    stats.num_loops++;
+    //
+    char *out = (char*)malloc(1024);
+    sprintf(out,"Debug END Loop, num_loops: %i, num_clients: %i, num_restarts: %i, freeheap: %lu",stats.num_loops, stats.num_clients, stats.num_restarts, ESP.getFreeHeap());
+    Serial.println(out);
+    free(out);
     delay(1000);
 }
 
