@@ -57,7 +57,7 @@ function loadFile(fp) {
 			document.querySelector("div.info").innerText += "2.) Successful parsing uploaded file\n";
 			
 			//
-			return fetch(document.location.origin, {  
+			fetch(document.location.origin, {  
 			    method :'POST',  
 			    headers:{"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"},  
 			    body   :"upc="+urlencode(upc),
@@ -67,7 +67,7 @@ function loadFile(fp) {
 		        document.querySelector("div.logfield > label").innerText = "Please wait 3 / 4 ...";
 		        document.querySelector("div.info").innerText += "3.) Configuration looks good\n";
 		        //
-				return fetch(document.location.origin, {  
+				fetch(document.location.origin, {  
 				    method :'POST',  
 				    headers:{"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"},  
 				    body   :"up="+urlencode(up),

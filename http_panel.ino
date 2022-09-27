@@ -218,7 +218,15 @@ void loop() {
         String head      = "";
         String body      = "";
         boolean headDone = false;
+        //
+        boolean returnSuccess = true;
+        boolean returnJson    = false;
+        String returnTitle    = "";
+        int returnVal         = 0;
         
+        //--
+        // Parse/capture http header. Body if content-length is set
+        //--------------------------------------------------
         //
         while( cli.connected() ) {
             // Connect
@@ -334,6 +342,7 @@ void loop() {
             free( tmp_panel );
         }
         // Uploading new configurations for panel
+        // Execute setups
         else if( match(c2c(body.c_str()),"^upc\=.*")==1 ) {
             Serial.println("DEBUG parsing new panel configuration..");
             //
@@ -367,7 +376,9 @@ void loop() {
         //--
         // Handle JSON Configured commands
         //---------------------------------
-        // Loop trough json configured tasks and check if request match 
+        // Loop trough json configured tasks and check if request match. Functions that can be executed here ex.: analogWrite, analogRead, 
+        //   digitalWrite, digitalRead etc..
+        // Execute tasks
         for(int i=0; i<tasks.size(); i++) {
             String taskTitle   = tasks[i]["title"];
             String taskRequest = tasks[i]["request"];
@@ -381,8 +392,6 @@ void loop() {
             
             // Request match for action!
             if( match(cmd[1],c2c(taskRequest.c_str()))==1 ) {
-                Serial.println("DEBUG CORRECT TASK REQUEST!!! Firing!!! Num actions: ");
-                Serial.println(actions.size());
                 // Loop trough request actions and exec them..
                 for(int j=0; j<actions.size(); j++) {
                     Serial.println("Entering action...");
@@ -392,22 +401,37 @@ void loop() {
                     int gpio         = actions[j]["gpio"];
                     int value        = actions[j]["value"];
                     String type      = actions[j]["type"];
-                    Serial.println(gpio);
-                    Serial.println(value);
-                    Serial.println(type);
-                    //
+                    
+                    //--
+                    // Digital Write
                     if( type=="DW" ) {
                         Serial.println("DEBUG FIRING DW!");
                         digitalWrite( gpio, value );
+                        returnJson = true;
                     }
-                    //
+                    // Digital Read
+                    else if( type=="DR" ) {
+                        Serial.println("DEBUG FIRING DR!");
+                        returnVal = digitalRead( gpio );
+                        returnJson = true;
+                        Serial.println( returnVal );
+                    }
+                    // Analog Write
                     else if( type=="AW" ) {
                         Serial.println("DEBUG FIRING AW!");
                         analogWrite( gpio, value );
-                        //ledcWrite(gpio, value);
+                        returnJson = true;
+                    }
+                    // Analog Read
+                    else if( type=="AR" ) {
+                        Serial.println("DEBUG FIRING AR!");
+                        returnVal = analogRead( gpio );
+                        returnJson = true;
+                        Serial.println( returnVal );
                     }
                     else {
                         Serial.println("DEBUG NOT CORRECT TYPE...");
+                        returnSuccess = false;
                     }
                 }
             }
@@ -419,8 +443,17 @@ void loop() {
         //
         htmlHeader(cli,200);
         //
-        htmlDocument(cli,(html_user_panel!=""?html_user_panel:html_start_panel));
-        
+        if( returnJson ) {
+            String tmpJson;
+            StaticJsonDocument<200> doc;
+            doc["success"] = returnSuccess;
+            doc["data"]    = returnVal;
+            serializeJson(doc, tmpJson);
+            htmlDocument(cli,tmpJson);
+        }
+        else {
+            htmlDocument(cli,(html_user_panel!=""?html_user_panel:html_start_panel));
+        }
         //
         //
         for(int i=0; cmd[i]!=NULL; i++) {
@@ -445,11 +478,11 @@ void loop() {
         //Serial.println( sson_user_panel );
         //
         cli.stop();
-        cli.flush();
+        //cli.flush();
     }
 
     Serial.println("outloop...");
-    delay(1500);
+    delay(1000);
 }
 
 
