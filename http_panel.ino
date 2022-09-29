@@ -15,11 +15,11 @@
  * t3ch
  * */
 #include <Arduino.h>
+#include "WiFi.h"
 #include <ArduinoJson.h> // https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 #include <GParser.h>     // https://github.com/GyverLibs/GParser
 #include <AceCRC.h>      // https://github.com/bxparks/AceCRC
 #include <Regexp.h>      // https://github.com/nickgammon/Regexp
-#include "WiFi.h"
 #include <stdio.h>
 #include <time.h>
 
@@ -32,9 +32,9 @@ const char* ssid = "esp32byk0s";
 const char* pwd  = "esp32bypwd";
 //
 struct Options {
-	int LoopDefault      = 25;
-	int LoopIdle         = 1000;
-	int disp_stats_every = 3; // display stats to Serial every 3s
+    int LoopDefault      = 25;
+    int LoopIdle         = 1000;
+    int disp_stats_every = 3; // display stats to Serial every 3s
 };
 //
 Options options;
@@ -176,7 +176,8 @@ char html_start_panel[] =
 //--
 // MISSING C FUNCTIonS START
 //---------------------------
-int match(char *string, char *pattern);
+int pmatch(char * checkString, char *pattern);
+int cmatch(char checkString[], char *pattern);
 char ** split(const char * str, const char * delim);
 void substring(const char s[], char sub[], int p, int l);
 char* str_replace(const char* s, const char* oldW, const char* newW);
@@ -245,13 +246,13 @@ void loop() {
     //
     // Lets display statististics not every loop.
     if( stats.last_disp_ts==0 || ((stats.last_disp_ts+(options.disp_stats_every*1000))<=(time(0)*1000)) ) {
-	    char *out = (char*)malloc(1024);
-	    sprintf(out,"Debug END Loop, num_loops: %i, num_clients: %i, num_restarts: %i, freeheap: %lu, wifi.sleep: %ld",
-	        stats.num_loops, stats.num_clients, stats.num_restarts, ESP.getFreeHeap(), WiFi.getSleep());
-	    Serial.println(out);
-	    stats.last_disp_ts = time(0)*1000;
-	    free(out);
-	}
+        char *out = (char*)malloc(1024);
+        sprintf(out,"Debug END Loop, num_loops: %i, num_clients: %i, num_restarts: %i, freeheap: %lu, wifi.sleep: %ld",
+            stats.num_loops, stats.num_clients, stats.num_restarts, ESP.getFreeHeap(), WiFi.getSleep());
+        Serial.println(out);
+        stats.last_disp_ts = time(0)*1000;
+        free(out);
+    }
     //
     stats.last_loop_ts = time(0)*1000;
     delay(loopDelay);
@@ -262,11 +263,11 @@ void cliHandler( void * client ) {
     WiFiClient cli = *((WiFiClient*)client);
     int length = 0;
     boolean headDone = false, error=false;
-    char cmdline[1024];
-    char cmd1[12];            // GET | POST | HEAD | OPTIONS
-    char cmd2[1024-12-56];    // (max size:956) GET request Ex.: /up=true Or /upc=true Or /reset Or just /
-    char cmd3[56];            // HTTP version
-    char type[128];
+    char cmdline[1024]={0};
+    char cmd1[56]={0};            // GET | POST | HEAD | OPTIONS
+    char cmd2[1024-56-56]={0};    // (max size:912) GET request Ex.: /up=true Or /upc=true Or /reset Or just /
+    char cmd3[56]={0};            // HTTP version
+    char type[128]={0};
     //
     String body;
     //
@@ -275,27 +276,30 @@ void cliHandler( void * client ) {
     int returnVal         = 0;
     //String taskTitle      = "";
     //
-    cli.setTimeout(5);
+    //cli.setTimeout(15);
     //
     while( cli.connected() ) {
         // Connect
         if( cli.available() ) {
             //
-            String line = cli.readStringUntil('\r');
+            String line    = cli.readStringUntil('\r');
+            
             Serial.println("line: ");
             Serial.println(line);
+            //phex("x: ",line.c_str());
             //
-            char * tmpline = c2c(line.c_str());
+            char fixline[line.length()+1] = {0};
+            line.toCharArray(fixline,line.length()+1);
             //
-            if( line.length()>=3 && match(tmpline,"^\xa.*")==1 ) {
+            if( line.length()>=3 && cmatch(fixline,"^\xa.*")==1 ) {
                 Serial.println("Fixing line...");
-                substring(line.c_str(),tmpline,2,line.length());
+                substring(line.c_str(),fixline,2,line.length());
             }
-            Serial.println("tmpline: ");
-            Serial.println(tmpline);
-            free(tmpline);
+            Serial.println("fixline: ");
+            Serial.println(fixline);
             //
             if( !headDone && line=="\xa" ) {
+            //if( !headDone && cmatch(fixline,"^\xa")==1 ) {
                 Serial.println("DEBUG HEADER END.");
                 headDone = true;
                 
@@ -314,26 +318,42 @@ void cliHandler( void * client ) {
                 Serial.println("Appending HEADER.");
                 
                 // parse header command / option
-                if( match(tmpline,"^GET.*")==1 ||
-                    match(tmpline,"^POST.*")==1 ) {
+                if( cmatch(fixline,"^GET.*")==1 ||
+                    cmatch(fixline,"^POST.*")==1 ) {
                     //
                     Serial.println("DEBUG CMD LINE");
-                    if( strlen(tmpline)>1024 ) {
+                    if( line.length()>1024 ) {
+                        Serial.println("ERROR Line too big!");
                         error = true;
                         break;
                     }
                     //
-                    char *tmpcmd = str_replace(tmpline,"  "," "); // fix double space for one
+                    char *tmpcmd = str_replace(fixline,"  "," "); // fix double space for one
                     char **cmd   = split( tmpcmd, " " );
-                    strcpy(cmd1,cmd[0]);
-                    strcpy(cmd2,cmd[1]);
-                    strcpy(cmd3,cmd[2]);
+                    //
+                    for(int i=0; cmd[i]!=NULL; i++) {
+						Serial.println("Parsing cmd[]...");
+						Serial.println(i);
+						switch(i) {
+							case 0:
+							    strcpy(cmd1,cmd[0]);
+							    break;
+							case 1:
+							    strcpy(cmd2,cmd[1]);
+							    break;
+							case 2:
+							    strcpy(cmd3,cmd[2]);
+							    break;
+							default:
+							    break;
+						}
+					}
                     strcpy(cmdline,tmpcmd);
                     for(int i=0; cmd[i]!=NULL; i++) free(cmd[i]);
                     free(tmpcmd);
                 }
                 // parse Content-Type
-                else if( match(tmpline,"^Content.Type.*")==1 ) {
+                else if( cmatch(fixline,"^Content.Type.*")==1 ) {
                     Serial.println("DEBUG CMD Content-Type LINE");
                     //
                     char ** tmp = split(line.c_str(),": ");
@@ -343,7 +363,7 @@ void cliHandler( void * client ) {
                     free(tmp);
                 }
                 // parse Content-Length
-                else if( match(tmpline,"^Content.Length.*")==1 ) {
+                else if( cmatch(fixline,"^Content.Length.*")==1 ) {
                     Serial.println("DEBUG CMD Content-Length LINE");
                     //
                     char ** tmp = split(line.c_str(),": ");
@@ -360,21 +380,23 @@ void cliHandler( void * client ) {
             }
             // retrive body
             else {
-                if( match(cmd2,"^\/up\=true+$")==0 &&
-                    match(cmd2,"^\/upc\=true+$")==0 ) {
+                if( pmatch(cmd2,"^\/up\=true+$")==0 &&
+                    pmatch(cmd2,"^\/upc\=true+$")==0 ) {
                     Serial.println("DEBUG BODY ADD NOT ALLOWED.");
                     error = true;
                     break;
                 }
                 
-                Serial.println("DEBUG BODY ADD.. length vs body.length: ");
-                body += line+"\n";
-                //strcat(body,line.c_str());
                 //
                 if( length>0 && body.length() >= length ) {
                     Serial.println("DEBUG BODY ADD/ENDING...!");
                     break;
                 }
+                
+                //
+                Serial.println("DEBUG BODY ADD.. length vs body.length: ");
+                body += line+"\n";
+                //strcat(body,line.c_str());
             }
         }
         else {
@@ -387,20 +409,16 @@ void cliHandler( void * client ) {
         // Parse and handle commands
         //-------------------
         // Uploading new command panel
-        if( html_user_panel.length()==0 && body.length()>0 && match(cmd2,"^\/up\=true")==1 ) {
+        if( html_user_panel.length()==0 && body.length()>0 && pmatch(cmd2,"^\/up\=true")==1 ) {
             Serial.println("DEBUG parsing new panel..");
-            //
-            char * tmp_panel = (char*)malloc(body.length()+1);
-            html_user_panel = GP_urldecode( tmp_panel );
-            free( tmp_panel );
+            html_user_panel = GP_urldecode( body );
         }
         // Uploading new configurations for panel
         // Execute setups
-        else if( html_user_panel.length()==0 && body.length()>0 && match(cmd2,"^\/upc\=true")==1 ) {
+        else if( html_user_panel.length()==0 && body.length()>0 && pmatch(cmd2,"^\/upc\=true")==1 ) {
             Serial.println("DEBUG parsing new panel configuration..");
             //
-            char * tmp_confs = (char*)malloc(body.length()+1);
-            sson_user_panel = GP_urldecode( tmp_confs );
+            sson_user_panel = GP_urldecode( body );
             deserializeJson(json_user_panel, sson_user_panel);
             tasks = json_user_panel["tasks"];
             
@@ -416,11 +434,10 @@ void cliHandler( void * client ) {
                     pinMode(gpio,(setupValue=="OUTPUT"?OUTPUT:INPUT));
                 }
             }
-            free( tmp_confs );
             setups.clear();
         }
         // Reset uploaded panel
-        else if( match(cmd2, "^\/reset+$")==1 ) {
+        else if( pmatch(cmd2, "^\/reset+$")==1 ) {
             Serial.println("DEBUG reseting to start_panel...");
             html_user_panel = "";
             tasks.clear();
@@ -446,8 +463,13 @@ void cliHandler( void * client ) {
         Serial.println(taskRequest);
         
         // Request match for action!
-        char *tmpRequest = c2c(taskRequest.c_str());
-        if( match(cmd2,tmpRequest)==1 ) {
+        //char *tmpRequest = c2c(taskRequest.c_str());
+        char tmpRequest[taskRequest.length()+1] = {0};
+        taskRequest.toCharArray(tmpRequest,taskRequest.length()+1);
+        Serial.println("tmpRequest: ");
+        Serial.println(tmpRequest);
+        //
+        if( cmatch(cmd2,tmpRequest)==1 ) {
             // Loop trough request actions and exec them..
             for(int j=0; j<actions.size(); j++) {
                 Serial.println("Entering action...");
@@ -457,7 +479,9 @@ void cliHandler( void * client ) {
                 int gpio         = actions[j]["gpio"];
                 int value        = actions[j]["value"];
                 String type      = actions[j]["type"];
-                
+                Serial.println(gpio);
+                Serial.println(value);
+                Serial.println(type);
                 //--
                 // Digital Write
                 if( type=="DW" ) {
@@ -485,6 +509,7 @@ void cliHandler( void * client ) {
                     returnJson = true;
                     Serial.println( returnVal );
                 }
+                // Unknown command
                 else {
                     Serial.println("DEBUG NOT CORRECT TYPE...");
                     returnSuccess = false;
@@ -492,7 +517,7 @@ void cliHandler( void * client ) {
             }
             break;
         }
-        free(tmpRequest);
+        //free(tmpRequest);
     }
   
     //
@@ -525,6 +550,9 @@ void cliHandler( void * client ) {
         htmlHeader(cli,200);
         //
         htmlDocument(cli,(html_user_panel!=""?html_user_panel:html_start_panel));
+        
+        Serial.println("DEBUG html_user_panel.length: ");
+        Serial.println(html_user_panel.length());
     }
     
     //
@@ -561,16 +589,28 @@ void htmlDocument(WiFiClient cli, String html) {
  *
  * return 1 for match, 0 for no match
  */
-int match(char *string, char *pattern) {
+//
+int pmatch(char * checkString, char *pattern) {
+    //
     MatchState ms;
-    ms.Target( string );
+    ms.Target( checkString );
     char result = ms.Match( pattern );
     if (result>0) {
         return(1);
     }
     return(0);
 }
-
+//
+int cmatch(char checkString[], char *pattern) {
+    //
+    MatchState ms;
+    ms.Target( checkString );
+    char result = ms.Match( pattern );
+    if (result>0) {
+        return(1);
+    }
+    return(0);
+}
 /**
  * function split() taken from: 
  * https://stackoverflow.com/questions/54261257/splitting-a-string-and-returning-an-array-of-strings
