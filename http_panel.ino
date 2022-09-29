@@ -7,6 +7,10 @@
  * Recommented editor usage: Geany + Fold all functions so you see better.
  * Compiling with Arduino IDE..
  * ------
+ * 
+ * 29.9.22 - fixed memory leakings. now program runs smothly!! :) ole.
+ * 
+ * ------
  * G00d luck to all***
  * t3ch
  * */
@@ -17,30 +21,43 @@
 #include <Regexp.h>      // https://github.com/nickgammon/Regexp
 #include "WiFi.h"
 #include <stdio.h>
+#include <time.h>
 
 //--
+// startup http panel credentials
+//const char* admin_user = "esp32Admin";
+//const char* admin_pass = "esp32Pass";
 // wifi configs.
 const char* ssid = "esp32byk0s";
 const char* pwd  = "esp32bypwd";
+//
+struct Options {
+	int LoopDefault      = 25;
+	int LoopIdle         = 1000;
+	int disp_stats_every = 3; // display stats to Serial every 3s
+};
+//
+Options options;
+int loopDelay = options.LoopDefault;
 //
 IPAddress IP;
 // start http server on port 80
 WiFiServer server(80);
 
-//--
 //
-struct statistics {
-	int num_loops   = 0;
-	int num_clients = 0;
-	int num_restarts = 0;
+struct Statistics {
+    int num_loops       = 0;
+    int num_clients     = 0;
+    int num_restarts    = 0;
+    double last_loop_ts = 0; // last loop timestamp in ms
+    double last_disp_ts = 0; // (timestamp in ms) to know when statistics was displayed last time (Used for debug and Serial output)
 };
-statistics stats;
-int chk_cli_restart = 0;
-int max_cli_restart = 50; // restart server after X connections (because of x bug, server stop working)
+Statistics stats;
 
 //
 DynamicJsonDocument json_user_panel(4048);
 DynamicJsonDocument tasks(4048);
+DynamicJsonDocument actions(1024);
 String sson_user_panel = "";
 String html_user_panel = "";
 // html_start_panel = upload_file_form.html converted with ghexc.php
@@ -100,59 +117,59 @@ char html_start_panel[] =
 "\x61\x69\x74\x20\x32\x20\x2f\x20\x34\x20\x2e\x2e\x2e\x22\x3b\xa\x9\x9\x9\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x71\x75\x65"
 "\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x69\x6e\x66\x6f\x22\x29\x2e\x69\x6e\x6e\x65\x72\x54\x65\x78"
 "\x74\x20\x2b\x3d\x20\x22\x32\x2e\x29\x20\x53\x75\x63\x63\x65\x73\x73\x66\x75\x6c\x20\x70\x61\x72\x73\x69\x6e\x67\x20\x75\x70"
-"\x6c\x6f\x61\x64\x65\x64\x20\x66\x69\x6c\x65\x5c\x6e\x22\x3b\xa\x9\x9\x9\xa\x9\x9\x9\x2f\x2f\xa\x9\x9\x9\x72\x65"
-"\x74\x75\x72\x6e\x20\x66\x65\x74\x63\x68\x28\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x6f\x72"
-"\x69\x67\x69\x6e\x2c\x20\x7b\x20\x20\xa\x9\x9\x9\x20\x20\x20\x20\x6d\x65\x74\x68\x6f\x64\x20\x3a\x27\x50\x4f\x53\x54\x27"
-"\x2c\x20\x20\xa\x9\x9\x9\x20\x20\x20\x20\x68\x65\x61\x64\x65\x72\x73\x3a\x7b\x22\x43\x6f\x6e\x74\x65\x6e\x74\x2d\x74\x79"
-"\x70\x65\x22\x3a\x20\x22\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x78\x2d\x77\x77\x77\x2d\x66\x6f\x72\x6d\x2d\x75\x72"
-"\x6c\x65\x6e\x63\x6f\x64\x65\x64\x3b\x20\x63\x68\x61\x72\x73\x65\x74\x3d\x55\x54\x46\x2d\x38\x22\x7d\x2c\x20\x20\xa\x9\x9"
-"\x9\x20\x20\x20\x20\x62\x6f\x64\x79\x20\x20\x20\x3a\x22\x75\x70\x63\x3d\x22\x2b\x75\x72\x6c\x65\x6e\x63\x6f\x64\x65\x28\x75"
-"\x70\x63\x29\x2c\xa\x9\x9\x20\x20\x20\x20\x7d\x29\x2e\x74\x68\x65\x6e\x28\x66\x75\x6e\x63\x74\x69\x6f\x6e\x20\x28\x64\x61"
-"\x74\x61\x31\x29\x20\x7b\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x63\x6f\x6e\x73\x6f\x6c\x65\x2e\x69\x6e\x66\x6f\x28\x22"
-"\x72\x65\x74\x75\x72\x6e\x65\x64\x20\x64\x61\x74\x61\x20\x66\x6f\x72\x20\x75\x70\x63\x3a\x20\x22\x2c\x64\x61\x74\x61\x31\x29"
-"\x3b\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63\x75\x6d\x65\x6e\x74"
-"\x2e\x71\x75\x65\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x6c\x6f\x67\x66\x69\x65\x6c\x64\x20\x3e\x20"
-"\x6c\x61\x62\x65\x6c\x22\x29\x2e\x69\x6e\x6e\x65\x72\x54\x65\x78\x74\x20\x3d\x20\x22\x50\x6c\x65\x61\x73\x65\x20\x77\x61\x69"
-"\x74\x20\x33\x20\x2f\x20\x34\x20\x2e\x2e\x2e\x22\x3b\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63\x75\x6d\x65\x6e"
-"\x74\x2e\x71\x75\x65\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x69\x6e\x66\x6f\x22\x29\x2e\x69\x6e\x6e"
-"\x65\x72\x54\x65\x78\x74\x20\x2b\x3d\x20\x22\x33\x2e\x29\x20\x43\x6f\x6e\x66\x69\x67\x75\x72\x61\x74\x69\x6f\x6e\x20\x6c\x6f"
-"\x6f\x6b\x73\x20\x67\x6f\x6f\x64\x5c\x6e\x22\x3b\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x2f\x2f\xa\x9\x9\x9\x9\x72"
-"\x65\x74\x75\x72\x6e\x20\x66\x65\x74\x63\x68\x28\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x6f"
-"\x72\x69\x67\x69\x6e\x2c\x20\x7b\x20\x20\xa\x9\x9\x9\x9\x20\x20\x20\x20\x6d\x65\x74\x68\x6f\x64\x20\x3a\x27\x50\x4f\x53"
-"\x54\x27\x2c\x20\x20\xa\x9\x9\x9\x9\x20\x20\x20\x20\x68\x65\x61\x64\x65\x72\x73\x3a\x7b\x22\x43\x6f\x6e\x74\x65\x6e\x74"
-"\x2d\x74\x79\x70\x65\x22\x3a\x20\x22\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x78\x2d\x77\x77\x77\x2d\x66\x6f\x72\x6d"
-"\x2d\x75\x72\x6c\x65\x6e\x63\x6f\x64\x65\x64\x3b\x20\x63\x68\x61\x72\x73\x65\x74\x3d\x55\x54\x46\x2d\x38\x22\x7d\x2c\x20\x20"
-"\xa\x9\x9\x9\x9\x20\x20\x20\x20\x62\x6f\x64\x79\x20\x20\x20\x3a\x22\x75\x70\x3d\x22\x2b\x75\x72\x6c\x65\x6e\x63\x6f\x64"
-"\x65\x28\x75\x70\x29\x2c\xa\x9\x9\x9\x20\x20\x20\x20\x7d\x29\x2e\x74\x68\x65\x6e\x28\x66\x75\x6e\x63\x74\x69\x6f\x6e\x20"
-"\x28\x64\x61\x74\x61\x32\x29\x20\x7b\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x63\x6f\x6e\x73\x6f\x6c\x65\x2e\x69\x6e"
-"\x66\x6f\x28\x22\x72\x65\x74\x75\x72\x6e\x65\x64\x20\x64\x61\x74\x61\x20\x66\x6f\x72\x20\x75\x70\x3a\x20\x22\x2c\x64\x61\x74"
-"\x61\x32\x29\x3b\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63"
-"\x75\x6d\x65\x6e\x74\x2e\x71\x75\x65\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x6c\x6f\x67\x66\x69\x65"
-"\x6c\x64\x20\x3e\x20\x6c\x61\x62\x65\x6c\x22\x29\x2e\x69\x6e\x6e\x65\x72\x54\x65\x78\x74\x20\x3d\x20\x22\x50\x6c\x65\x61\x73"
-"\x65\x20\x77\x61\x69\x74\x20\x34\x20\x2f\x20\x34\x20\x2e\x2e\x2e\x22\x3b\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64"
-"\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x71\x75\x65\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x69\x6e\x66\x6f"
-"\x22\x29\x2e\x69\x6e\x6e\x65\x72\x54\x65\x78\x74\x20\x2b\x3d\x20\x22\x34\x2e\x29\x20\x41\x6c\x6c\x20\x6c\x6f\x6f\x6b\x73\x20"
-"\x72\x65\x61\x64\x79\x2e\x2e\x2e\x20\x52\x65\x6c\x6f\x61\x64\x69\x6e\x67\x2e\x2e\x2e\x5c\x6e\x22\x3b\xa\x9\x9\x9\x20\x20"
-"\x20\x20\x20\x20\x20\x20\x2f\x2f\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x73\x65\x74\x54\x69\x6d\x65\x6f\x75\x74\x28"
-"\x66\x75\x6e\x63\x74\x69\x6f\x6e\x28\x29\x20\x7b\xa\x9\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63\x75\x6d\x65"
-"\x6e\x74\x2e\x6c\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x68\x72\x65\x66\x3d\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74"
-"\x69\x6f\x6e\x2e\x68\x72\x65\x66\x3b\xa\x9\x9\x9\x9\x9\x7d\x2c\x31\x30\x30\x30\x29\x3b\xa\x9\x9\x9\x20\x20\x20\x20"
-"\x7d\x29\x3b\xa\x9\x9\x20\x20\x20\x20\x7d\x29\x3b\xa\x9\x9\x7d\xa\x9\x9\x72\x64\x2e\x72\x65\x61\x64\x41\x73\x54\x65"
-"\x78\x74\x28\x66\x70\x2e\x66\x69\x6c\x65\x73\x5b\x30\x5d\x29\x3b\xa\x9\x7d\xa\x7d\xa\x66\x75\x6e\x63\x74\x69\x6f\x6e\x20"
-"\x6f\x6e\x4c\x6f\x61\x64\x28\x65\x29\x20\x7b\xa\x9\x69\x66\x28\x20\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74"
-"\x69\x6f\x6e\x2e\x70\x61\x74\x68\x6e\x61\x6d\x65\x21\x3d\x22\x2f\x22\x20\x7c\x7c\x20\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c"
-"\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x73\x65\x61\x72\x63\x68\x21\x3d\x22\x22\x20\x29\x20\x7b\xa\x9\x9\x77\x69\x6e\x64\x6f\x77"
-"\x2e\x68\x69\x73\x74\x6f\x72\x79\x2e\x72\x65\x70\x6c\x61\x63\x65\x53\x74\x61\x74\x65\x28\x7b\x7d\x2c\x22\x22\x2c\x22\x2f\x22"
-"\x29\x3b\xa\x9\x7d\xa\x7d\xa\x77\x69\x6e\x64\x6f\x77\x2e\x6f\x6e\x6c\x6f\x61\x64\x20\x3d\x20\x66\x75\x6e\x63\x74\x69\x6f"
-"\x6e\x28\x65\x29\x20\x7b\x20\x6f\x6e\x4c\x6f\x61\x64\x28\x65\x29\x3b\x20\x7d\xa\x3c\x2f\x73\x63\x72\x69\x70\x74\x3e\xa\xa"
-"\x3c\x68\x33\x3e\x3c\x61\x20\x68\x72\x65\x66\x3d\x22\x2f\x22\x3e\x48\x6f\x6d\x65\x3c\x2f\x61\x3e\x3c\x2f\x68\x33\x3e\xa\x3c"
-"\x62\x72\x3e\xa\x3c\x62\x72\x3e\xa\xa\x3c\x64\x69\x76\x20\x63\x6c\x61\x73\x73\x3d\x22\x6c\x6f\x67\x66\x69\x65\x6c\x64\x22"
-"\x3e\xa\x9\x3c\x6c\x61\x62\x65\x6c\x3e\x3c\x2f\x6c\x61\x62\x65\x6c\x3e\xa\x9\x3c\x64\x69\x76\x20\x63\x6c\x61\x73\x73\x3d"
-"\x22\x69\x6e\x66\x6f\x22\x3e\x3c\x2f\x64\x69\x76\x3e\xa\x3c\x2f\x64\x69\x76\x3e\xa\xa\x43\x68\x6f\x6f\x73\x65\x20\x61\x72"
-"\x64\x75\x69\x6e\x6f\x20\x63\x6f\x6e\x74\x72\x6f\x6c\x20\x70\x61\x6e\x65\x6c\x3a\x20\x3c\x62\x72\x3e\xa\x3c\x66\x6f\x72\x6d"
-"\x20\x6d\x65\x74\x68\x6f\x64\x3d\x22\x50\x4f\x53\x54\x22\x3e\xa\x9\x3c\x69\x6e\x70\x75\x74\x20\x74\x79\x70\x65\x3d\x22\x66"
-"\x69\x6c\x65\x22\x20\x6f\x6e\x63\x68\x61\x6e\x67\x65\x3d\x22\x6c\x6f\x61\x64\x46\x69\x6c\x65\x28\x74\x68\x69\x73\x29\x3b\x22"
-"\x3e\xa\x3c\x2f\x66\x6f\x72\x6d\x3e\xa\xa\x3c\x2f\x62\x6f\x64\x79\x3e\xa\x3c\x2f\x68\x74\x6d\x6c\x3e\xa";
+"\x6c\x6f\x61\x64\x65\x64\x20\x66\x69\x6c\x65\x5c\x6e\x22\x3b\xa\x9\x9\x9\xa\x9\x9\x9\x2f\x2f\xa\x9\x9\x9\x66\x65"
+"\x74\x63\x68\x28\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x6f\x72\x69\x67\x69\x6e\x2b\x22\x2f"
+"\x75\x70\x63\x3d\x74\x72\x75\x65\x22\x2c\x20\x7b\x20\x20\xa\x9\x9\x9\x20\x20\x20\x20\x6d\x65\x74\x68\x6f\x64\x20\x3a\x27"
+"\x50\x4f\x53\x54\x27\x2c\x20\x20\xa\x9\x9\x9\x20\x20\x20\x20\x68\x65\x61\x64\x65\x72\x73\x3a\x7b\x22\x43\x6f\x6e\x74\x65"
+"\x6e\x74\x2d\x74\x79\x70\x65\x22\x3a\x20\x22\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x78\x2d\x77\x77\x77\x2d\x66\x6f"
+"\x72\x6d\x2d\x75\x72\x6c\x65\x6e\x63\x6f\x64\x65\x64\x3b\x20\x63\x68\x61\x72\x73\x65\x74\x3d\x55\x54\x46\x2d\x38\x22\x7d\x2c"
+"\x20\x20\xa\x9\x9\x9\x20\x20\x20\x20\x62\x6f\x64\x79\x20\x20\x20\x3a\x75\x72\x6c\x65\x6e\x63\x6f\x64\x65\x28\x75\x70\x63"
+"\x29\x2c\xa\x9\x9\x20\x20\x20\x20\x7d\x29\x2e\x74\x68\x65\x6e\x28\x66\x75\x6e\x63\x74\x69\x6f\x6e\x20\x28\x64\x61\x74\x61"
+"\x31\x29\x20\x7b\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x63\x6f\x6e\x73\x6f\x6c\x65\x2e\x69\x6e\x66\x6f\x28\x22\x72\x65"
+"\x74\x75\x72\x6e\x65\x64\x20\x64\x61\x74\x61\x20\x66\x6f\x72\x20\x75\x70\x63\x3a\x20\x22\x2c\x64\x61\x74\x61\x31\x29\x3b\xa"
+"\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x71"
+"\x75\x65\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x6c\x6f\x67\x66\x69\x65\x6c\x64\x20\x3e\x20\x6c\x61"
+"\x62\x65\x6c\x22\x29\x2e\x69\x6e\x6e\x65\x72\x54\x65\x78\x74\x20\x3d\x20\x22\x50\x6c\x65\x61\x73\x65\x20\x77\x61\x69\x74\x20"
+"\x33\x20\x2f\x20\x34\x20\x2e\x2e\x2e\x22\x3b\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e"
+"\x71\x75\x65\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x69\x6e\x66\x6f\x22\x29\x2e\x69\x6e\x6e\x65\x72"
+"\x54\x65\x78\x74\x20\x2b\x3d\x20\x22\x33\x2e\x29\x20\x43\x6f\x6e\x66\x69\x67\x75\x72\x61\x74\x69\x6f\x6e\x20\x6c\x6f\x6f\x6b"
+"\x73\x20\x67\x6f\x6f\x64\x5c\x6e\x22\x3b\xa\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x2f\x2f\xa\x9\x9\x9\x9\x66\x65\x74"
+"\x63\x68\x28\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x6f\x72\x69\x67\x69\x6e\x2b\x22\x2f\x75"
+"\x70\x3d\x74\x72\x75\x65\x22\x2c\x20\x7b\x20\x20\xa\x9\x9\x9\x9\x20\x20\x20\x20\x6d\x65\x74\x68\x6f\x64\x20\x3a\x27\x50"
+"\x4f\x53\x54\x27\x2c\x20\x20\xa\x9\x9\x9\x9\x20\x20\x20\x20\x68\x65\x61\x64\x65\x72\x73\x3a\x7b\x22\x43\x6f\x6e\x74\x65"
+"\x6e\x74\x2d\x74\x79\x70\x65\x22\x3a\x20\x22\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x78\x2d\x77\x77\x77\x2d\x66\x6f"
+"\x72\x6d\x2d\x75\x72\x6c\x65\x6e\x63\x6f\x64\x65\x64\x3b\x20\x63\x68\x61\x72\x73\x65\x74\x3d\x55\x54\x46\x2d\x38\x22\x7d\x2c"
+"\x20\x20\xa\x9\x9\x9\x9\x20\x20\x20\x20\x62\x6f\x64\x79\x20\x20\x20\x3a\x75\x72\x6c\x65\x6e\x63\x6f\x64\x65\x28\x75\x70"
+"\x29\x2c\xa\x9\x9\x9\x20\x20\x20\x20\x7d\x29\x2e\x74\x68\x65\x6e\x28\x66\x75\x6e\x63\x74\x69\x6f\x6e\x20\x28\x64\x61\x74"
+"\x61\x32\x29\x20\x7b\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x63\x6f\x6e\x73\x6f\x6c\x65\x2e\x69\x6e\x66\x6f\x28\x22"
+"\x72\x65\x74\x75\x72\x6e\x65\x64\x20\x64\x61\x74\x61\x20\x66\x6f\x72\x20\x75\x70\x3a\x20\x22\x2c\x64\x61\x74\x61\x32\x29\x3b"
+"\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63\x75\x6d\x65\x6e"
+"\x74\x2e\x71\x75\x65\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x6c\x6f\x67\x66\x69\x65\x6c\x64\x20\x3e"
+"\x20\x6c\x61\x62\x65\x6c\x22\x29\x2e\x69\x6e\x6e\x65\x72\x54\x65\x78\x74\x20\x3d\x20\x22\x50\x6c\x65\x61\x73\x65\x20\x77\x61"
+"\x69\x74\x20\x34\x20\x2f\x20\x34\x20\x2e\x2e\x2e\x22\x3b\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63\x75\x6d"
+"\x65\x6e\x74\x2e\x71\x75\x65\x72\x79\x53\x65\x6c\x65\x63\x74\x6f\x72\x28\x22\x64\x69\x76\x2e\x69\x6e\x66\x6f\x22\x29\x2e\x69"
+"\x6e\x6e\x65\x72\x54\x65\x78\x74\x20\x2b\x3d\x20\x22\x34\x2e\x29\x20\x41\x6c\x6c\x20\x6c\x6f\x6f\x6b\x73\x20\x72\x65\x61\x64"
+"\x79\x2e\x2e\x2e\x20\x52\x65\x6c\x6f\x61\x64\x69\x6e\x67\x2e\x2e\x2e\x5c\x6e\x22\x3b\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20"
+"\x20\x20\x2f\x2f\xa\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x73\x65\x74\x54\x69\x6d\x65\x6f\x75\x74\x28\x66\x75\x6e\x63"
+"\x74\x69\x6f\x6e\x28\x29\x20\x7b\xa\x9\x9\x9\x9\x20\x20\x20\x20\x20\x20\x20\x20\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c"
+"\x6f\x63\x61\x74\x69\x6f\x6e\x2e\x68\x72\x65\x66\x3d\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74\x69\x6f\x6e\x2e"
+"\x68\x72\x65\x66\x3b\xa\x9\x9\x9\x9\x9\x7d\x2c\x31\x30\x30\x30\x29\x3b\xa\x9\x9\x9\x20\x20\x20\x20\x7d\x29\x3b\xa"
+"\x9\x9\x20\x20\x20\x20\x7d\x29\x3b\xa\x9\x9\x7d\xa\x9\x9\x72\x64\x2e\x72\x65\x61\x64\x41\x73\x54\x65\x78\x74\x28\x66"
+"\x70\x2e\x66\x69\x6c\x65\x73\x5b\x30\x5d\x29\x3b\xa\x9\x7d\xa\x7d\xa\x66\x75\x6e\x63\x74\x69\x6f\x6e\x20\x6f\x6e\x4c\x6f"
+"\x61\x64\x28\x65\x29\x20\x7b\xa\x9\x69\x66\x28\x20\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74\x69\x6f\x6e\x2e"
+"\x70\x61\x74\x68\x6e\x61\x6d\x65\x21\x3d\x22\x2f\x22\x20\x7c\x7c\x20\x64\x6f\x63\x75\x6d\x65\x6e\x74\x2e\x6c\x6f\x63\x61\x74"
+"\x69\x6f\x6e\x2e\x73\x65\x61\x72\x63\x68\x21\x3d\x22\x22\x20\x29\x20\x7b\xa\x9\x9\x77\x69\x6e\x64\x6f\x77\x2e\x68\x69\x73"
+"\x74\x6f\x72\x79\x2e\x72\x65\x70\x6c\x61\x63\x65\x53\x74\x61\x74\x65\x28\x7b\x7d\x2c\x22\x22\x2c\x22\x2f\x22\x29\x3b\xa\x9"
+"\x7d\xa\x7d\xa\x77\x69\x6e\x64\x6f\x77\x2e\x6f\x6e\x6c\x6f\x61\x64\x20\x3d\x20\x66\x75\x6e\x63\x74\x69\x6f\x6e\x28\x65\x29"
+"\x20\x7b\x20\x6f\x6e\x4c\x6f\x61\x64\x28\x65\x29\x3b\x20\x7d\xa\x3c\x2f\x73\x63\x72\x69\x70\x74\x3e\xa\xa\x3c\x68\x33\x3e"
+"\x3c\x61\x20\x68\x72\x65\x66\x3d\x22\x2f\x22\x3e\x48\x6f\x6d\x65\x3c\x2f\x61\x3e\x3c\x2f\x68\x33\x3e\xa\x3c\x62\x72\x3e\xa"
+"\x3c\x62\x72\x3e\xa\xa\x3c\x64\x69\x76\x20\x63\x6c\x61\x73\x73\x3d\x22\x6c\x6f\x67\x66\x69\x65\x6c\x64\x22\x3e\xa\x9\x3c"
+"\x6c\x61\x62\x65\x6c\x3e\x3c\x2f\x6c\x61\x62\x65\x6c\x3e\xa\x9\x3c\x64\x69\x76\x20\x63\x6c\x61\x73\x73\x3d\x22\x69\x6e\x66"
+"\x6f\x22\x3e\x3c\x2f\x64\x69\x76\x3e\xa\x3c\x2f\x64\x69\x76\x3e\xa\xa\x43\x68\x6f\x6f\x73\x65\x20\x61\x72\x64\x75\x69\x6e"
+"\x6f\x20\x63\x6f\x6e\x74\x72\x6f\x6c\x20\x70\x61\x6e\x65\x6c\x3a\x20\x3c\x62\x72\x3e\xa\x3c\x66\x6f\x72\x6d\x20\x6d\x65\x74"
+"\x68\x6f\x64\x3d\x22\x50\x4f\x53\x54\x22\x3e\xa\x9\x3c\x69\x6e\x70\x75\x74\x20\x74\x79\x70\x65\x3d\x22\x66\x69\x6c\x65\x22"
+"\x20\x6f\x6e\x63\x68\x61\x6e\x67\x65\x3d\x22\x6c\x6f\x61\x64\x46\x69\x6c\x65\x28\x74\x68\x69\x73\x29\x3b\x22\x3e\xa\x3c\x2f"
+"\x66\x6f\x72\x6d\x3e\xa\xa\x3c\x2f\x62\x6f\x64\x79\x3e\xa\x3c\x2f\x68\x74\x6d\x6c\x3e\xa";
 
 
 
@@ -164,33 +181,18 @@ char ** split(const char * str, const char * delim);
 void substring(const char s[], char sub[], int p, int l);
 char* str_replace(const char* s, const char* oldW, const char* newW);
 char *strstrip(char *s);
-void phex(const char* s);
+void phex(char *txt, const char* s);
 char * c2c(const char *from);
 char * crc32b(const char* from);
-
-
 
 
 //--
 // Program functions START
 //---------------------------
 //
-void htmlHeader(WiFiClient cli, int code) {
-    char * tmp = (char*)malloc(56);
-    sprintf(tmp,"HTTP/1.1 %i OK", code);
-    
-    //cli.println("HTTP/1.1 200 OK");
-    cli.println( tmp );
-    cli.println("Content-type: text/html");
-    cli.println("Connection: close");
-    cli.println("");
-}
-//
-void htmlDocument(WiFiClient cli, String html) {
-    cli.println( html );
-}
-
-
+void cliHandler( void * client );
+void htmlHeader(WiFiClient cli, int code);
+void htmlDocument(WiFiClient cli, String html);
 
 
 
@@ -209,10 +211,8 @@ void setup() {
     delay(100);
     //--
     //
-    Serial.println("Hello, world...");
+    Serial.print("WebServer IP: ");
     Serial.println(IP);
-    Serial.println("Test crc32b: ");
-    Serial.println( crc32b("Hello, World!") );
     //
     server.begin();
 }
@@ -222,149 +222,185 @@ void loop() {
     WiFiClient cli = server.available();
     //
     if( cli ) {
+        /*TaskHandle_t cliHandle;
         //
-        char** cmd;
-        String cmdline   = "";
-        String type      = ""; // Content-Type..: application/x-www-form-urlencoded,
-        String length    = ""; // Content-Length..: 9999 (useful to know if body is included or not. i hope.) :)
-        String line      = "";
-        String head      = "";
-        String body      = "";
-        boolean headDone = false;
+        xTaskCreate(//PinnedToCore(
+          cliHandler, // Function to implement the task 
+          "cliHandler", // Name of the task 
+          10000,  // Stack size in words 
+          &cli,//NULL,  // Task input parameter 
+          0,  // Priority of the task 
+          &cliHandle  // Task handle. 
+          ); // Core where the task should run
         //
-        boolean returnSuccess = true;
-        boolean returnJson    = false;
-        String returnTitle    = "";
-        int returnVal         = 0;
+        vTaskDelay(1);
+        */
         
-        //--
-        // Parse/capture http header. Body if content-length is set
-        //--------------------------------------------------
+        cliHandler( &cli );
         //
-        while( cli.connected() ) {
-            // Connect
-            if( cli.available() ) {
-                //
-                line = cli.readStringUntil('\r');
-                //--
-                // Strip bad characters \r. Lets hope there is nothing else.. :)
-                if( line.length()>3 && match(c2c(line.c_str()),"^\xa.*")==1 ) {
-                    Serial.println("Fixing line...");
-                    char * tmpline = (char*)malloc(line.length()+1);
-                    substring(line.c_str(),tmpline,2,line.length());
-                    line = tmpline;
-                    free(tmpline);
-                }
+        stats.num_clients++;
+    }
+    //
+    stats.num_loops++;
+    //
+    // Lets display statististics not every loop.
+    if( stats.last_disp_ts==0 || ((stats.last_disp_ts+(options.disp_stats_every*1000))<=(time(0)*1000)) ) {
+	    char *out = (char*)malloc(1024);
+	    sprintf(out,"Debug END Loop, num_loops: %i, num_clients: %i, num_restarts: %i, freeheap: %lu, wifi.sleep: %ld",
+	        stats.num_loops, stats.num_clients, stats.num_restarts, ESP.getFreeHeap(), WiFi.getSleep());
+	    Serial.println(out);
+	    stats.last_disp_ts = time(0)*1000;
+	    free(out);
+	}
+    //
+    stats.last_loop_ts = time(0)*1000;
+    delay(loopDelay);
+}
+
+//
+void cliHandler( void * client ) {
+    WiFiClient cli = *((WiFiClient*)client);
+    int length = 0;
+    boolean headDone = false, error=false;
+    char cmdline[1024];
+    char cmd1[12];            // GET | POST | HEAD | OPTIONS
+    char cmd2[1024-12-56];    // (max size:956) GET request Ex.: /up=true Or /upc=true Or /reset Or just /
+    char cmd3[56];            // HTTP version
+    char type[128];
+    //
+    String body;
+    //
+    boolean returnSuccess = true;
+    boolean returnJson    = false;
+    int returnVal         = 0;
+    //String taskTitle      = "";
+    //
+    cli.setTimeout(5);
+    //
+    while( cli.connected() ) {
+        // Connect
+        if( cli.available() ) {
+            //
+            String line = cli.readStringUntil('\r');
+            Serial.println("line: ");
+            Serial.println(line);
+            //
+            char * tmpline = c2c(line.c_str());
+            //
+            if( line.length()>=3 && match(tmpline,"^\xa.*")==1 ) {
+                Serial.println("Fixing line...");
+                substring(line.c_str(),tmpline,2,line.length());
+            }
+            Serial.println("tmpline: ");
+            Serial.println(tmpline);
+            free(tmpline);
+            //
+            if( !headDone && line=="\xa" ) {
+                Serial.println("DEBUG HEADER END.");
+                headDone = true;
                 
-                //--
-                // Finish Retriving Header
-                // Here we know if we should continue retrive body or finish request with response.
-                //
-                if( !headDone && line=="\xa" ) {
-                    Serial.println("DEBUG HEADER END.");
-                    headDone = true;
-                    
-                    // Content-Length Not Set
-                    if( length=="" ) {
-                        Serial.println("Breaking request. (d1)");
-                        break;
-                    }
-                    // Content-Length is Set, continue retriving body
-                    else {
-                        Serial.println("Continue request with retrive of body. (d2)");
-                    }
-                }
-                // retrive header & parse header values
-                else if(!headDone) {
-                    Serial.println("Appending HEADER.");
-                    //Serial.println(line);
-                    
-                    head += line+"\n";
-                    
-                    // parse header command / option
-                    if( match(c2c(line.c_str()),"^GET.*")==1 ||
-                        match(c2c(line.c_str()),"^POST.*")==1 ) {
-                        //
-                        Serial.println("DEBUG CMD LINE");
-                        //
-                        line    = str_replace(line.c_str(),"  "," "); // fix double space for one
-                        cmdline = line;
-                        cmd     = split( line.c_str(), " " );
-                    }
-                    // parse Content-Type
-                    else if( match(c2c(line.c_str()),"^Content.Type.*")==1 ) {
-                        Serial.println("DEBUG CMD Content-Type LINE");
-                        //
-                        char ** tmp = split(line.c_str(),": ");
-                        type = tmp[1];
-                    }
-                    // parse Content-Length
-                    else if( match(c2c(line.c_str()),"^Content.Length.*")==1 ) {
-                        Serial.println("DEBUG CMD Content-Type LINE");
-                        //
-                        char ** tmpx = split(line.c_str(),": ");
-                        length = tmpx[1];
-                        free(tmpx);
-                    }
-                }
-                // body end
-                else if( headDone && line=="\xa" ) {
-                    Serial.println("DEBUG BODY END.");
+                // Content-Length Not Set
+                if( length==0 ) {
+                    Serial.println("Breaking request. (d1)");
                     break;
                 }
-                // retrive body
+                // Content-Length is Set, continue retriving body
                 else {
-                    Serial.println("DEBUG BODY ADD.. length vs body.length: ");
-                    Serial.println(line);
-                    body += line+"\n";
-                    
-                    char *tmpmsg = (char*)malloc(128);
-                    sprintf(tmpmsg,"DEBUG BODY ADD/END? body.length: %i vs length: %i\n",body.length(), strtol(length.c_str(), NULL, 2));
-                    Serial.println(tmpmsg);
-                    free(tmpmsg);
-                    
-                    //if( length!="" && body.length() >= atoi(length.c_str()) ) {
-                    if( body.length() >= strtol(length.c_str(), NULL, 2) ) {
-                        Serial.println("DEBUG BODY ADD/ENDING...!");
-                        break;
-                    }
+                    Serial.println("Continue request with retrive of body. (d2)");
                 }
             }
-            // Disconnect
-            else {
-                //
-                Serial.println("DEBUG Cli no more available!");
-                //
-                //cli.stop();
-                //cli.flush();
-                //
-                //delay(1000);
-                //
+            //
+            else if(!headDone) {
+                Serial.println("Appending HEADER.");
+                
+                // parse header command / option
+                if( match(tmpline,"^GET.*")==1 ||
+                    match(tmpline,"^POST.*")==1 ) {
+                    //
+                    Serial.println("DEBUG CMD LINE");
+                    if( strlen(tmpline)>1024 ) {
+                        error = true;
+                        break;
+                    }
+                    //
+                    char *tmpcmd = str_replace(tmpline,"  "," "); // fix double space for one
+                    char **cmd   = split( tmpcmd, " " );
+                    strcpy(cmd1,cmd[0]);
+                    strcpy(cmd2,cmd[1]);
+                    strcpy(cmd3,cmd[2]);
+                    strcpy(cmdline,tmpcmd);
+                    for(int i=0; cmd[i]!=NULL; i++) free(cmd[i]);
+                    free(tmpcmd);
+                }
+                // parse Content-Type
+                else if( match(tmpline,"^Content.Type.*")==1 ) {
+                    Serial.println("DEBUG CMD Content-Type LINE");
+                    //
+                    char ** tmp = split(line.c_str(),": ");
+                    //type = tmp[1];
+                    strcpy(type,tmp[1]);
+                    for(int i=0; tmp[i]!=NULL; i++) free(tmp[i]);
+                    free(tmp);
+                }
+                // parse Content-Length
+                else if( match(tmpline,"^Content.Length.*")==1 ) {
+                    Serial.println("DEBUG CMD Content-Length LINE");
+                    //
+                    char ** tmp = split(line.c_str(),": ");
+                    length      = strtol(tmp[1], NULL, 0);
+                    //body   = (char*)malloc( strtol(length.c_str(), NULL, 2)+1 );
+                    for(int i=0; tmp[i]!=NULL; i++) free(tmp[i]);
+                    free(tmp);
+                }
+            }
+            // body end
+            else if( headDone && line=="\xa" ) {
+                Serial.println("DEBUG BODY END.");
                 break;
             }
+            // retrive body
+            else {
+                if( match(cmd2,"^\/up\=true+$")==0 &&
+                    match(cmd2,"^\/upc\=true+$")==0 ) {
+                    Serial.println("DEBUG BODY ADD NOT ALLOWED.");
+                    error = true;
+                    break;
+                }
+                
+                Serial.println("DEBUG BODY ADD.. length vs body.length: ");
+                body += line+"\n";
+                //strcat(body,line.c_str());
+                //
+                if( length>0 && body.length() >= length ) {
+                    Serial.println("DEBUG BODY ADD/ENDING...!");
+                    break;
+                }
+            }
         }
-        
+        else {
+            break;
+        }
+    }
+    
+    if( !error ) {
         //--
         // Parse and handle commands
         //-------------------
         // Uploading new command panel
-        if( match(c2c(body.c_str()),"^up\=.*")==1 ) {
+        if( html_user_panel.length()==0 && body.length()>0 && match(cmd2,"^\/up\=true")==1 ) {
             Serial.println("DEBUG parsing new panel..");
             //
             char * tmp_panel = (char*)malloc(body.length()+1);
-            substring(body.c_str(),tmp_panel,4,body.length());
             html_user_panel = GP_urldecode( tmp_panel );
             free( tmp_panel );
         }
         // Uploading new configurations for panel
         // Execute setups
-        else if( match(c2c(body.c_str()),"^upc\=.*")==1 ) {
+        else if( html_user_panel.length()==0 && body.length()>0 && match(cmd2,"^\/upc\=true")==1 ) {
             Serial.println("DEBUG parsing new panel configuration..");
             //
             char * tmp_confs = (char*)malloc(body.length()+1);
-            substring(body.c_str(),tmp_confs,5,body.length());
             sson_user_panel = GP_urldecode( tmp_confs );
-            
             deserializeJson(json_user_panel, sson_user_panel);
             tasks = json_user_panel["tasks"];
             
@@ -381,142 +417,138 @@ void loop() {
                 }
             }
             free( tmp_confs );
+            setups.clear();
         }
         // Reset uploaded panel
-        else if( match(cmd[1], "^\/reset+$")==1 ) {
+        else if( match(cmd2, "^\/reset+$")==1 ) {
             Serial.println("DEBUG reseting to start_panel...");
             html_user_panel = "";
+            tasks.clear();
+            actions.clear();
+            json_user_panel.clear();
         }
+    }
+    
+    //--
+    // Handle JSON Configured commands
+    //---------------------------------
+    // Loop trough json configured tasks and check if request match. Functions that can be executed here ex.: analogWrite, analogRead, 
+    //   digitalWrite, digitalRead etc..
+    // Execute tasks
+    for(int i=0; i<tasks.size(); i++) {
+        String taskTitle   = tasks[i]["title"];
+        String taskRequest = tasks[i]["request"];
+        actions            = tasks[i]["actions"];
         
-        //--
-        // Handle JSON Configured commands
-        //---------------------------------
-        // Loop trough json configured tasks and check if request match. Functions that can be executed here ex.: analogWrite, analogRead, 
-        //   digitalWrite, digitalRead etc..
-        // Execute tasks
-        for(int i=0; i<tasks.size(); i++) {
-            String taskTitle   = tasks[i]["title"];
-            String taskRequest = tasks[i]["request"];
-            DynamicJsonDocument actions(1024);
-            actions            = tasks[i]["actions"];
-            
-            Serial.println("taskTitle: ");
-            Serial.println(taskTitle);
-            Serial.println("taskRequest: ");
-            Serial.println(taskRequest);
-            
-            // Request match for action!
-            if( match(cmd[1],c2c(taskRequest.c_str()))==1 ) {
-                // Loop trough request actions and exec them..
-                for(int j=0; j<actions.size(); j++) {
-                    Serial.println("Entering action...");
-                    // Ex. action: {"gpio":27,"value":0,"type":"DW"}
-                    // value 0 = LOW, 1=HIGH
-                    // todo DW = digitalWrite, DR = digitalRead, AW = analogWrite, AR = analogRead
-                    int gpio         = actions[j]["gpio"];
-                    int value        = actions[j]["value"];
-                    String type      = actions[j]["type"];
-                    
-                    //--
-                    // Digital Write
-                    if( type=="DW" ) {
-                        Serial.println("DEBUG FIRING DW!");
-                        digitalWrite( gpio, value );
-                        returnJson = true;
-                    }
-                    // Digital Read
-                    else if( type=="DR" ) {
-                        Serial.println("DEBUG FIRING DR!");
-                        returnVal = digitalRead( gpio );
-                        returnJson = true;
-                        Serial.println( returnVal );
-                    }
-                    // Analog Write
-                    else if( type=="AW" ) {
-                        Serial.println("DEBUG FIRING AW!");
-                        analogWrite( gpio, value );
-                        returnJson = true;
-                    }
-                    // Analog Read
-                    else if( type=="AR" ) {
-                        Serial.println("DEBUG FIRING AR!");
-                        returnVal = analogRead( gpio );
-                        returnJson = true;
-                        Serial.println( returnVal );
-                    }
-                    else {
-                        Serial.println("DEBUG NOT CORRECT TYPE...");
-                        returnSuccess = false;
-                    }
+        Serial.println("taskTitle: ");
+        Serial.println(taskTitle);
+        Serial.println("taskRequest: ");
+        Serial.println(taskRequest);
+        
+        // Request match for action!
+        char *tmpRequest = c2c(taskRequest.c_str());
+        if( match(cmd2,tmpRequest)==1 ) {
+            // Loop trough request actions and exec them..
+            for(int j=0; j<actions.size(); j++) {
+                Serial.println("Entering action...");
+                // Ex. action: {"gpio":27,"value":0,"type":"DW"}
+                // value 0 = LOW, 1=HIGH
+                // todo DW = digitalWrite, DR = digitalRead, AW = analogWrite, AR = analogRead
+                int gpio         = actions[j]["gpio"];
+                int value        = actions[j]["value"];
+                String type      = actions[j]["type"];
+                
+                //--
+                // Digital Write
+                if( type=="DW" ) {
+                    Serial.println("DEBUG FIRING DW!");
+                    digitalWrite( gpio, value );
+                    returnJson = true;
+                }
+                // Digital Read
+                else if( type=="DR" ) {
+                    Serial.println("DEBUG FIRING DR!");
+                    returnVal = digitalRead( gpio );
+                    returnJson = true;
+                    Serial.println( returnVal );
+                }
+                // Analog Write
+                else if( type=="AW" ) {
+                    Serial.println("DEBUG FIRING AW!");
+                    analogWrite( gpio, value );
+                    returnJson = true;
+                }
+                // Analog Read
+                else if( type=="AR" ) {
+                    Serial.println("DEBUG FIRING AR!");
+                    returnVal = analogRead( gpio );
+                    returnJson = true;
+                    Serial.println( returnVal );
+                }
+                else {
+                    Serial.println("DEBUG NOT CORRECT TYPE...");
+                    returnSuccess = false;
                 }
             }
+            break;
         }
-        
-        //--
-        // Handle response
-        //-------------------
+        free(tmpRequest);
+    }
+  
+    //
+    if( error ) {
+        htmlHeader(cli,404);
+        String tmpJson;
+        StaticJsonDocument<200> doc;
+        doc["error"] = true;
+        serializeJson(doc, tmpJson);
+        htmlDocument(cli,tmpJson);
+        doc.clear();
+    }
+    //
+    else if( returnJson ) {
         //
         htmlHeader(cli,200);
         //
-        if( returnJson ) {
-            String tmpJson;
-            StaticJsonDocument<200> doc;
-            doc["success"] = returnSuccess;
-            doc["data"]    = returnVal;
-            serializeJson(doc, tmpJson);
-            htmlDocument(cli,tmpJson);
-        }
-        else {
-            htmlDocument(cli,(html_user_panel!=""?html_user_panel:html_start_panel));
-        }
-        //
-        //
-        for(int i=0; cmd[i]!=NULL; i++) {
-            Serial.println("cmd[x]: ");
-            Serial.println(cmd[i]);
-        }
-        //
-        Serial.println("cmdline: ");
-        Serial.println(cmdline);
-        Serial.println("content type: ");
-        Serial.println(type);
-        Serial.println("content length: ");
-        Serial.println(length);
-        Serial.println("head.len: ");
-        Serial.println( head.length() );
-        Serial.println("body.len: ");
-        Serial.println( body.length() );
-        //Serial.println( body );
-        //Serial.println("html_user_panel: ");
-        //Serial.println( html_user_panel );
-        //Serial.println("sson_user_panel: ");
-        //Serial.println( sson_user_panel );
-        //
-        cli.stop();
-        cli.flush();
-        //
-        stats.num_clients++;
-        
-        //
-	    if( chk_cli_restart >= max_cli_restart ) {
-			Serial.println("Debug Restarting Server !");
-			chk_cli_restart = 0;
-			//server.reset();
-			stats.num_restarts++;
-		}
-		else {
-			chk_cli_restart++;
-		}
+        String tmpJson;
+        StaticJsonDocument<200> doc;
+        doc["success"] = returnSuccess;
+        //doc["title"]   = taskTitle;
+        doc["data"]    = returnVal;
+        serializeJson(doc, tmpJson);
+        htmlDocument(cli,tmpJson);
+        doc.clear();
     }
     //
-    stats.num_loops++;
+    else {
+        //
+        htmlHeader(cli,200);
+        //
+        htmlDocument(cli,(html_user_panel!=""?html_user_panel:html_start_panel));
+    }
+    
     //
-    char *out = (char*)malloc(1024);
-    sprintf(out,"Debug END Loop, num_loops: %i, num_clients: %i, num_restarts: %i, freeheap: %lu",stats.num_loops, stats.num_clients, stats.num_restarts, ESP.getFreeHeap());
-    Serial.println(out);
-    free(out);
-    delay(1000);
+    cli.stop();
+    cli.flush();
+    //xTaskDestroy(NULL);
 }
+//
+void htmlHeader(WiFiClient cli, int code) {
+    char * tmp = (char*)malloc(56);
+    sprintf(tmp,"HTTP/1.1 %i OK", code);
+    
+    //cli.println("HTTP/1.1 200 OK");
+    cli.println( tmp );
+    cli.println("Content-type: text/html");
+    cli.println("Connection: close");
+    cli.println("");
+    free(tmp);
+}
+//
+void htmlDocument(WiFiClient cli, String html) {
+    cli.println( html );
+}
+
 
 
 
@@ -565,14 +597,12 @@ char ** split(const char * str, const char * delim) {
   int i;
   
   v[0] = strdup(strtok(s, delim));
-  
-  for (i = 1; i != nw; ++i)
-  v[i] = strdup(strtok(NULL, delim));
-  
+  //
+  for (i = 1; i != nw; ++i) {
+    v[i] = strdup( strtok(NULL, delim) );
+  }
   v[i] = NULL; /* end mark */
-  
   free(s);
-  
   return v;
 }
 
@@ -660,15 +690,18 @@ void substring(const char s[], char sub[], int p, int l) {
 }*/
 
 //
-void phex(const char* s) {
+void phex(char *txt, const char* s) {
   //
   //printf("DEBUG 1\n");
   char* tmp = (char*)malloc(128);
+  memset(tmp,'\0',128);
   for(int i=0; i<strlen(s); i++) {
     int x = (int)s[i];
-    sprintf(tmp,"%s%x",tmp,x);
+    if(i==0) sprintf(tmp,"%s: %s%x",txt,tmp,x);
+    else     sprintf(tmp,"%s%x",tmp,x);
   }
   Serial.println( tmp );
+  free(tmp);
 }
 
 //
