@@ -42,7 +42,7 @@ Your control panel should be html file with some additions. Addition is new HTML
 
 
 # File definitions:
- - http_panel.ino    ( Arduino/ESP32 code that runs server and create wifi station )
+ - http_panel.ino    ( Arduino/ESP32 code that runs json configurable web server and currently support wifi station only. )
  - ghexc.php         ( Script that is used to convert html file into C Programming string arrays so it can be included into c code Ex.: char yourwar[]="\x1\x2\x3"; )
  - upload_file_form.php is converted with ghexc.php and used with variable "char html_start_panel[] = ..."
 - remote_car_panel.html ( Example of panel that can be configuret with json+html and used with controller )
