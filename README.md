@@ -1,6 +1,6 @@
 ESP32 / Arduino http control panel. ( In developement but have it logic..:) )
 
-(Tested on ESP32 by me. Next steps are to reduce memory usage!)
+(Tested on ESP32 by me. From 29.9.22 no more memory problems!!! Uiii)
 
 
 # How it work:
