@@ -17,7 +17,7 @@ while [ 1 ]; do
     echo $cnt".) testlagserv running..."
     #
     #curl -I $testUrl # Test HEAD only
-    #curl $testUrl    # Test as browser
+    #curl $testUrl    # Test with a lot of infos similar to browser
     # Test POST request with body
     curl -X POST http://192.168.4.1/up=true -H "Content-Type: application/json" -d '{"id":123,"name":"test"}'
     #curl -X POST http://192.168.4.1/reset -H "Content-Type: application/json" -d '{"id":123,"name":"test"}'
