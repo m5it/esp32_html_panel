@@ -350,6 +350,7 @@ void cliHandler( void * client ) {
 					}
                     strcpy(cmdline,tmpcmd);
                     for(int i=0; cmd[i]!=NULL; i++) free(cmd[i]);
+                    free(cmd);
                     free(tmpcmd);
                 }
                 // parse Content-Type
@@ -357,7 +358,6 @@ void cliHandler( void * client ) {
                     Serial.println("DEBUG CMD Content-Type LINE");
                     //
                     char ** tmp = split(line.c_str(),": ");
-                    //type = tmp[1];
                     strcpy(type,tmp[1]);
                     for(int i=0; tmp[i]!=NULL; i++) free(tmp[i]);
                     free(tmp);
@@ -368,7 +368,6 @@ void cliHandler( void * client ) {
                     //
                     char ** tmp = split(line.c_str(),": ");
                     length      = strtol(tmp[1], NULL, 0);
-                    //body   = (char*)malloc( strtol(length.c_str(), NULL, 2)+1 );
                     for(int i=0; tmp[i]!=NULL; i++) free(tmp[i]);
                     free(tmp);
                 }
@@ -457,17 +456,10 @@ void cliHandler( void * client ) {
         String taskRequest = tasks[i]["request"];
         actions            = tasks[i]["actions"];
         
-        Serial.println("taskTitle: ");
-        Serial.println(taskTitle);
-        Serial.println("taskRequest: ");
-        Serial.println(taskRequest);
-        
         // Request match for action!
         //char *tmpRequest = c2c(taskRequest.c_str());
         char tmpRequest[taskRequest.length()+1] = {0};
         taskRequest.toCharArray(tmpRequest,taskRequest.length()+1);
-        Serial.println("tmpRequest: ");
-        Serial.println(tmpRequest);
         //
         if( cmatch(cmd2,tmpRequest)==1 ) {
             // Loop trough request actions and exec them..
@@ -479,9 +471,6 @@ void cliHandler( void * client ) {
                 int gpio         = actions[j]["gpio"];
                 int value        = actions[j]["value"];
                 String type      = actions[j]["type"];
-                Serial.println(gpio);
-                Serial.println(value);
-                Serial.println(type);
                 //--
                 // Digital Write
                 if( type=="DW" ) {
