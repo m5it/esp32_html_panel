@@ -9,6 +9,7 @@ ESP32 / Arduino http control panel. ( In developement but have it logic..:) )
 2.) upload<br>
 3.) navigate with browser to 192.168.4.1
 4.) choose your control panel
+
 Your control panel should be html file with some additions. Addition is new HTML Block "\<arduino>\</arduino>". Inside of block we define controller configuration in JSON format. For ex.:
 
 \<arduino>
