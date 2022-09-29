@@ -5,8 +5,10 @@ ESP32 / Arduino http control panel. ( In developement but have it logic..:) )
 
 # How it work:
 
-1.) copy/paste "http_panel.ino" into your ArduinoIDE compiler.<br>
-2.) upload<br>
+1.) copy/paste "http_panel.ino" into your ArduinoIDE compiler.
+
+2.) upload
+
 3.) navigate with browser to 192.168.4.1
 
 4.) choose your control panel
