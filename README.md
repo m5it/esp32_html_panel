@@ -43,6 +43,7 @@ Your control panel should be html file with some additions. Addition is new HTML
  - ghexc.php         ( Script that is used to convert html file into C Programming string arrays so it can be included into c code Ex.: char yourwar[]="\x1\x2\x3"; )
  - upload_file_form.php is converted with ghexc.php and used with variable "char html_start_panel[] = ..."
 - remote_car_panel.html ( Example of panel that can be configuret with json+html and used with controller )
+- testlogserv.sh        ( in loop trigger multiple requests to the server to test for memory problems )
 
 
 Thanks for watching.*
