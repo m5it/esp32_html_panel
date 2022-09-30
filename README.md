@@ -53,7 +53,8 @@ Your control panel should be html file with some additions. Addition is new HTML
 Thanks for watching.*
 
 
-# Screenshots of v0.1b
+# Screenshots
+
 #<small>v0.01</small>
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen1_v0.1.png)
 
