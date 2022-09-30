@@ -23,7 +23,7 @@
 #include <GParser.h>     // https://github.com/GyverLibs/GParser
 #include <AceCRC.h>      // https://github.com/bxparks/AceCRC
 #include <Regexp.h>      // https://github.com/nickgammon/Regexp
-#include <DHT.h>         // https://github.com/adafruit/DHT-sensor-library, https://www.mouser.com/datasheet/2/758/DHT11-Technical-Data-Sheet-Translated-Version-1143054.pdf
+#include <DHT.h>         // https://github.com/m5it/DHT_sensor_library_modified, https://www.mouser.com/datasheet/2/758/DHT11-Technical-Data-Sheet-Translated-Version-1143054.pdf
 #include <stdio.h>
 #include <time.h>
 
