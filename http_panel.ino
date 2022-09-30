@@ -196,7 +196,7 @@ char * crc32b(const char* from);
 //---------------------------
 //
 void cliHandler( void * client );
-void htmlHeader(WiFiClient cli, int code);
+void htmlHeader(WiFiClient cli, int code, int length);
 void htmlDocument(WiFiClient cli, String html);
 
 //DHT dht(DHTPIN,DHTTYPE);
@@ -532,50 +532,49 @@ void cliHandler( void * client ) {
   
     //
     if( error ) {
-        htmlHeader(cli,404);
         String tmpJson;
         StaticJsonDocument<200> doc;
         doc["error"] = true;
         serializeJson(doc, tmpJson);
+        htmlHeader(cli,404,tmpJson.length());
         htmlDocument(cli,tmpJson);
         doc.clear();
     }
     //
     else if( returnJson ) {
-        //
-        htmlHeader(cli,200);
-        //
         String tmpJson;
         StaticJsonDocument<200> doc;
         doc["success"] = returnSuccess;
-        //doc["title"]   = taskTitle;
         doc["data"]    = returnVal;
         serializeJson(doc, tmpJson);
+        htmlHeader(cli,200,tmpJson.length());
         htmlDocument(cli,tmpJson);
         doc.clear();
     }
     //
     else {
-        //
-        htmlHeader(cli,200);
-        //
+        htmlHeader(cli,200,(html_user_panel!=""?html_user_panel.length():strlen(html_start_panel)));
         htmlDocument(cli,(html_user_panel!=""?html_user_panel:html_start_panel));
     }
     
     //
     //delay(100);
     cli.stop();
-    //cli.flush();
+    cli.flush();
     //xTaskDestroy(NULL);
 }
 //
-void htmlHeader(WiFiClient cli, int code) {
+void htmlHeader(WiFiClient cli, int code, int length) {
     char * tmp = (char*)malloc(56);
+    memset(tmp,'\0',56);
     sprintf(tmp,"HTTP/1.1 %i OK", code);
-    
-    //cli.println("HTTP/1.1 200 OK");
-    cli.println( tmp );
+    cli.println(tmp);
     cli.println("Content-type: text/html");
+    if( length>0 ) {
+		memset(tmp,'\0',56);
+	    sprintf(tmp,"Content-Length: %i", length);
+	    cli.println(tmp);
+	}
     cli.println("Connection: close");
     cli.println("");
     free(tmp);
