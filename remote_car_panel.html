@@ -18,6 +18,17 @@
 			overflow-y:auto;
 			max-height:50vh;
 		}
+		.slider {
+		}
+		.slider.hor {
+			width:200px;
+			height:30px;
+			background:lightblue;
+		}
+		.slider .cursor {
+			background:red;
+			border-radius:66px;
+		}
 		</style>
 
 <script>
@@ -31,7 +42,8 @@ function Fetch( opt ) {
 	console.info("Fetch() using href",href);
 	
 	fetch(href, {  
-	    method :'GET',  
+	    method :'GET',
+	    cache:'no-cache',  
     }).then(function (data) {
 		return data.json();
 	}).then(function(json) {
@@ -63,7 +75,7 @@ window.onload = function(e) { onLoad(e); }
 		
 		<!-- left side is used to move car left and right -->
 		<div class="leftSide">
-			<a href="/MOTOR_A_ON" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('start motor data: ',json);},});return false;">Start motor A</a> <br>
+			<div><a href="/MOTOR_A_ON" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('start motor data: ',json);},});return false;">Start motor A</a> | <div class="slider hor"><div class="cursor"></div></div> </div>
 			<a href="/MOTOR_A_OFF" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('stop motor data: ',json);},});return false;">Stop motor A</a> <br>
 			<a href="/BATTERY_LEVEL" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('battery level data: ',json);},});return false;">Check Battery Level</a> <br>
 			<a href="/DHTT" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('temperature data: ',json);},});return false;">Check Temperature with DHT11</a> <br>
