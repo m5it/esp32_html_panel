@@ -1,17 +1,23 @@
 <arduino>
-{"setups":[{"gpio":27,"action":"mode", "value":"OUTPUT"},{"gpio":14,"action":"mode", "value":"OUTPUT"},{"gpio":13,"action":"mode", "value":"OUTPUT"}], "tasks":[{"title":"Start motor A","request":"/MOTOR_A_ON", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":1,"type":"DW"},{"gpio":13,"value":130,"type":"AW"}]},{"title":"Stop motor A","request":"/MOTOR_A_OFF", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":0,"type":"DW"}]},{"title":"Check battery level","request":"/BATTERY_LEVEL", "actions":[{"gpio":34,"value":0,"type":"AR"}]}]}
+{"setups":[{"gpio":26,"action":"DHT", "value":11},{"gpio":27,"action":"mode", "value":"OUTPUT"},{"gpio":14,"action":"mode", "value":"OUTPUT"},{"gpio":13,"action":"mode", "value":"OUTPUT"}], "tasks":[{"title":"Start motor A","request":"/MOTOR_A_ON", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":1,"type":"DW"},{"gpio":13,"value":130,"type":"AW"}]},{"title":"Stop motor A","request":"/MOTOR_A_OFF", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":0,"type":"DW"}]},{"title":"Check battery level","request":"/BATTERY_LEVEL", "actions":[{"gpio":34,"value":0,"type":"AR"}]},{"title":"Check temperature with DHT11","request":"/DHTT", "actions":[{"gpio":0,"value":0,"type":"DHTT"}]},{"title":"Check humidity with DHT11","request":"/DHTH", "actions":[{"gpio":0,"value":0,"type":"DHTH"}]}]}
 </arduino>
 <html>
 	<head>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 		<title>remote car panel</title>
 		<style>
-		.leftSide {}
-		.leftSide .circle {
-			border-radius:60px;
-			border:solid 5px black;
+		.leftSide, .rightSide {
+			float:left;
+			width:50%;
+			box-sizing:border-box;
+		}
+		.leftSide {
 		}
 		.rightSide {}
+		#d {
+			overflow-y:auto;
+			max-height:50vh;
+		}
 		</style>
 
 <script>
@@ -43,27 +49,30 @@ function onLoad(e) {
 		window.history.replaceState({},"","/");
 	}
 }
+function qS(s) {return document.querySelector(s);}
+function iN(d) {var e=document.createElement('div');e.innerHTML = (new Date().toJSON())+" => "+JSON.stringify(d);qS("#d").prepend(e);}
 window.onload = function(e) { onLoad(e); }
 </script>
 	</head>
 	
 	<body>
 		
-		<div align="center"><h3>Example of simple html control panel for Arduino or ESP32...</h3></div>
+		<div align="center"><a href="/reset" style="float:left;">Reset panel</a><div style="clear:both;"></div><h3>Example of simple html control panel for Arduino or ESP32...</h3></div>
 		
 		<br>
 		
-		<a href="/MOTOR_A_ON" onclick="Fetch({href:this.href,onDone:function(json){console.info('start motor data: ',json);},});return false;">Start motor A</a> <br>
-		<a href="/MOTOR_A_OFF" onclick="Fetch({href:this.href,onDone:function(json){console.info('stop motor data: ',json);},});return false;">Stop motor A</a> <br>
-		<a href="/BATTERY_LEVEL" onclick="Fetch({href:this.href,onDone:function(json){console.info('battery level data: ',json);},});return false;">Check Battery Level</a> <br>
-		
 		<!-- left side is used to move car left and right -->
 		<div class="leftSide">
-			<div class="circle"></div>
+			<a href="/MOTOR_A_ON" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('start motor data: ',json);},});return false;">Start motor A</a> <br>
+			<a href="/MOTOR_A_OFF" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('stop motor data: ',json);},});return false;">Stop motor A</a> <br>
+			<a href="/BATTERY_LEVEL" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('battery level data: ',json);},});return false;">Check Battery Level</a> <br>
+			<a href="/DHTT" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('temperature data: ',json);},});return false;">Check Temperature with DHT11</a> <br>
+			<a href="/DHTH" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('humidity data: ',json);},});return false;">Check Humidity with DHT11</a> <br>
 		</div>
 		
 		<!-- right side is used to move car infront and back -->
 		<div class="rightSide">
+			<div id="d"></div>
 		</div>
 	</body>
 </html>

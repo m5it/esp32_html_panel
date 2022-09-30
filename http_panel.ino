@@ -8,7 +8,10 @@
  * Compiling with Arduino IDE..
  * ------
  * 
- * 29.9.22 - fixed memory leakings. now program runs smothly!! :) ole.
+ * 28.9.22 - fixed memory leakings. now program runs smothly!! :) ole.
+ * 29.9.22 - more memory fixes
+ *           style of code updates
+ *           added support for DHT sensors
  * 
  * ------
  * G00d luck to all***
@@ -20,6 +23,7 @@
 #include <GParser.h>     // https://github.com/GyverLibs/GParser
 #include <AceCRC.h>      // https://github.com/bxparks/AceCRC
 #include <Regexp.h>      // https://github.com/nickgammon/Regexp
+#include <DHT.h>         // https://github.com/adafruit/DHT-sensor-library, https://www.mouser.com/datasheet/2/758/DHT11-Technical-Data-Sheet-Translated-Version-1143054.pdf
 #include <stdio.h>
 #include <time.h>
 
@@ -195,8 +199,7 @@ void cliHandler( void * client );
 void htmlHeader(WiFiClient cli, int code);
 void htmlDocument(WiFiClient cli, String html);
 
-
-
+//DHT dht(DHTPIN,DHTTYPE);
 //--
 // Default Arduino functions START
 //---------------------------------
@@ -216,6 +219,7 @@ void setup() {
     Serial.println(IP);
     //
     server.begin();
+    //dht.begin(55);
 }
 
 void loop() {
@@ -273,8 +277,11 @@ void cliHandler( void * client ) {
     //
     boolean returnSuccess = true;
     boolean returnJson    = false;
-    int returnVal         = 0;
+    float returnVal       = NULL;
     //String taskTitle      = "";
+    //
+    DHT dht; // (30.9.22) support for DHT sensors! Required modified DHT library at: 
+    
     //
     //cli.setTimeout(15);
     //
@@ -332,22 +339,20 @@ void cliHandler( void * client ) {
                     char **cmd   = split( tmpcmd, " " );
                     //
                     for(int i=0; cmd[i]!=NULL; i++) {
-						Serial.println("Parsing cmd[]...");
-						Serial.println(i);
-						switch(i) {
-							case 0:
-							    strcpy(cmd1,cmd[0]);
-							    break;
-							case 1:
-							    strcpy(cmd2,cmd[1]);
-							    break;
-							case 2:
-							    strcpy(cmd3,cmd[2]);
-							    break;
-							default:
-							    break;
-						}
-					}
+                        switch(i) {
+                            case 0:
+                                strcpy(cmd1,cmd[0]);
+                                break;
+                            case 1:
+                                strcpy(cmd2,cmd[1]);
+                                break;
+                            case 2:
+                                strcpy(cmd3,cmd[2]);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
                     strcpy(cmdline,tmpcmd);
                     for(int i=0; cmd[i]!=NULL; i++) free(cmd[i]);
                     free(cmd);
@@ -425,12 +430,16 @@ void cliHandler( void * client ) {
             DynamicJsonDocument setups(1024);
             setups = json_user_panel["setups"];
             for(int i=0; i<setups.size(); i++) {
-                String setupAction = setups[i]["action"]; // mode,...
-                String setupValue  = setups[i]["value"];
+                String setupAction = setups[i]["action"]; // mode,DHT...
                 //
                 if( setupAction=="mode" ) {
-                    int gpio = setups[i]["gpio"];
-                    pinMode(gpio,(setupValue=="OUTPUT"?OUTPUT:INPUT));
+                    pinMode(setups[i]["gpio"],(setups[i]["value"]=="OUTPUT"?OUTPUT:INPUT));
+                }
+                //
+                else if( setupAction=="DHT" ) {
+                    Serial.println("DEBUG DHT setups!");
+                    dht.setPinNType( setups[i]["gpio"], setups[i]["value"] );
+                    dht.begin();
                 }
             }
             setups.clear();
@@ -457,7 +466,6 @@ void cliHandler( void * client ) {
         actions            = tasks[i]["actions"];
         
         // Request match for action!
-        //char *tmpRequest = c2c(taskRequest.c_str());
         char tmpRequest[taskRequest.length()+1] = {0};
         taskRequest.toCharArray(tmpRequest,taskRequest.length()+1);
         //
@@ -498,6 +506,20 @@ void cliHandler( void * client ) {
                     returnJson = true;
                     Serial.println( returnVal );
                 }
+                // DHT Temperature
+                else if( type=="DHTT" ) {
+                    Serial.println("DEBUG FIRING DHTT!");
+                    returnVal = dht.readTemperature();
+                    returnJson = true;
+                    Serial.println( returnVal );
+                }
+                // DHT Humidity
+                else if( type=="DHTH" ) {
+                    Serial.println("DEBUG FIRING DHTH!");
+                    returnVal = dht.readHumidity();
+                    returnJson = true;
+                    Serial.println( returnVal );
+                }
                 // Unknown command
                 else {
                     Serial.println("DEBUG NOT CORRECT TYPE...");
@@ -506,7 +528,6 @@ void cliHandler( void * client ) {
             }
             break;
         }
-        //free(tmpRequest);
     }
   
     //
@@ -539,14 +560,12 @@ void cliHandler( void * client ) {
         htmlHeader(cli,200);
         //
         htmlDocument(cli,(html_user_panel!=""?html_user_panel:html_start_panel));
-        
-        Serial.println("DEBUG html_user_panel.length: ");
-        Serial.println(html_user_panel.length());
     }
     
     //
+    //delay(100);
     cli.stop();
-    cli.flush();
+    //cli.flush();
     //xTaskDestroy(NULL);
 }
 //
