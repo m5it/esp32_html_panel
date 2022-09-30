@@ -41,6 +41,11 @@ Your control panel should be html file with some additions. Addition is new HTML
 - http://192.168.4.1/reset      # To reset to startup panel.
 - (Other options are used trough html panel "upload_file_form.html" or if user create his panel with his configurations trough JSON.)
 
+# Supported actions trough JSON
+- analogRead(), analogWrite()
+- digitalRead(), digitalWrite()
+- executing multiple actions to run motor driver L298 and similar.
+- reading data for DHT11, DHT22 and DHT21 sensors. (Required modified DHT library that can be found here) 
 
 # File definitions:
  - http_panel.ino    ( Arduino/ESP32 code that runs json configurable web server and currently support wifi station only. )
