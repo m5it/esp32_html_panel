@@ -12,6 +12,58 @@
 <script>
 //
 var rd = null;
+var FetchAll = function(url,data,size,ondone) {
+	//
+	var _this = this;
+	var parts = [];
+	var at=0,of=0;
+	//
+	this.fetch = function() {
+		var useUrl = url+"?partAt="+at+"&partOf="+of;
+		console.info("using url",useUrl);
+		//
+		fetch(useUrl, {  
+		    method :'POST',
+		    cache:'no-store',
+		    headers:{"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"},  
+		    body   :urlencode(parts.shift()),
+	    }).then(function (data) {
+	        return data.json();
+	    }).then(function(json) {
+			if( parts.length ) {
+				at++;
+				_this.fetch();
+			}
+			else {
+				if(typeof(ondone)=='function') {
+					ondone(json);
+				}
+			}
+		});
+	}
+	
+	//
+	var cnt=0;
+	var part="";
+	for(var i=0; i<data.length; i++) {
+		part += data[i];
+		if(cnt>=size) {
+			parts.push(part);
+			part = "";
+			cnt=0;
+		}
+		else if(i>=(data.length-1)) {
+			parts.push(part);
+			part = "";
+		}
+		else {
+			cnt++;
+		}
+	}
+	of=parts.length;
+	//
+	this.fetch();
+}
 //
 if (window.File && window.FileReader && window.FileList && window.Blob) {
 	rd = new FileReader();
@@ -58,7 +110,8 @@ function loadFile(fp) {
 			
 			//
 			fetch(document.location.origin+"/upc=true", {  
-			    method :'POST',  
+			    method :'POST',
+			    cache:'no-store',
 			    headers:{"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"},  
 			    body   :urlencode(upc),
 		    }).then(function (data1) {
@@ -67,20 +120,14 @@ function loadFile(fp) {
 		        document.querySelector("div.logfield > label").innerText = "Please wait 3 / 4 ...";
 		        document.querySelector("div.info").innerText += "3.) Configuration looks good\n";
 		        //
-				fetch(document.location.origin+"/up=true", {  
-				    method :'POST',  
-				    headers:{"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"},  
-				    body   :urlencode(up),
-			    }).then(function (data2) {
-			        console.info("returned data for up: ",data2);
-			        
-			        document.querySelector("div.logfield > label").innerText = "Please wait 4 / 4 ...";
+			    (new FetchAll(document.location.origin+"/up=true",up,1024,function(json){
+					document.querySelector("div.logfield > label").innerText = "Please wait 4 / 4 ...";
 			        document.querySelector("div.info").innerText += "4.) All looks ready... Reloading...\n";
 			        //
 			        setTimeout(function() {
-				        document.location.href=document.location.href;
+						document.location.href=document.location.href;
 					},1000);
-			    });
+				}));
 		    });
 		}
 		rd.readAsText(fp.files[0]);
