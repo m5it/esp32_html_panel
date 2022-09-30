@@ -55,14 +55,14 @@ Thanks for watching.*
 
 # Screenshots
 
-#<small>v0.01</small>
+#v0.01
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen1_v0.1.png)
 
-#<small>v0.01</small>
+#v0.01
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen2_v0.1.png)
 
-#<small>v0.01</small>
+#v0.01
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen3_v0.1.png)
 
-#<small>v0.02 - Added DHT sensors support</small>
+#v0.02
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen4_v0.02.png)
