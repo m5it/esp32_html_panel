@@ -1,49 +1,141 @@
 <arduino>
-{"setups":[{"gpio":26,"action":"DHT", "value":11},{"gpio":27,"action":"mode", "value":"OUTPUT"},{"gpio":14,"action":"mode", "value":"OUTPUT"},{"gpio":13,"action":"mode", "value":"OUTPUT"}], "tasks":[{"title":"Start motor A","request":"/MOTOR_A_ON", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":1,"type":"DW"},{"gpio":13,"value":130,"type":"AW"}]},{"title":"Stop motor A","request":"/MOTOR_A_OFF", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":0,"type":"DW"}]},{"title":"Check battery level","request":"/BATTERY_LEVEL", "actions":[{"gpio":34,"value":0,"type":"AR"}]},{"title":"Check temperature with DHT11","request":"/DHTT", "actions":[{"gpio":0,"value":0,"type":"DHTT"}]},{"title":"Check humidity with DHT11","request":"/DHTH", "actions":[{"gpio":0,"value":0,"type":"DHTH"}]}]}
+{"setups":[{"gpio":26,"action":"DHT", "value":11},{"gpio":27,"action":"mode", "value":"OUTPUT"},{"gpio":14,"action":"mode", "value":"OUTPUT"},{"gpio":13,"action":"mode", "value":"OUTPUT"}], "tasks":[{"title":"Start motor A","request":"/MOTOR_A_ON", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":1,"type":"DW"},{"gpio":13,"value":130,"type":"AW"}]},{"title":"Stop motor A","request":"/MOTOR_A_OFF", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":0,"type":"DW"}]},{"title":"Check battery level","request":"/BATTERY_LEVEL", "actions":[{"gpio":34,"value":0,"type":"AR"}]},{"title":"Check temperature with DHT11","request":"/DHTT", "actions":[{"gpio":0,"value":0,"type":"DHTT"}]},{"title":"Check humidity with DHT11","request":"/DHTH", "actions":[{"gpio":0,"value":0,"type":"DHTH"}]},{"title":"Motor A Speed","request":"/MOTOR_A_SPEED", "actions":[{"gpio":13,"value":0,"type":"AW","paramName":"speed"}]}]}
 </arduino>
 <html>
 	<head>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+		<meta name="viewport" content="width=100%, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
 		<title>remote car panel</title>
-		<style>
-		.leftSide, .rightSide {
-			float:left;
-			width:50%;
-			box-sizing:border-box;
-		}
-		.leftSide {
-		}
-		.rightSide {}
-		#d {
-			overflow-y:auto;
-			max-height:50vh;
-		}
-		.slider {
-		}
-		.slider.hor {
-			width:200px;
-			height:30px;
-			background:lightblue;
-		}
-		.slider .cursor {
-			background:red;
-			border-radius:66px;
-		}
-		</style>
+<style>
+.leftSide, .rightSide {
+	float:left;
+	width:50%;
+	box-sizing:border-box;
+}
+.leftSide {
+}
+.rightSide {}
+#d {
+	overflow-y:auto;
+	max-height:50vh;
+}
+.sliderSpace {
+	position:relative;
+	padding-top:20px;
+	display:inline-block;
+}
+.slider {
+	display:inline-block;
+}
+.slider.hor {
+	width:200px;
+	height:31px;
+	background:lightblue;
+	overflow-x:scroll;
+	margin-top: -5px;
+    overflow-y: hidden;
+}
+.slider.hor:before, .slider.hor:after {
+	position:absolute;
+	top:0px;
+	padding:2px;
+	color:black;
+	background:gray;
+	box-shadow:0px 0px 2px 1px lightgray;
+	font-size:0.7em;
+}
+.slider.hor:before {
+	left:0px;
+	content:"SLOW";
+}
+.slider.hor:after {
+	right:0px;
+	content:"FAST";
+}
+.slider.hor .info {
+	position:absolute;
+	top:50%;
+	left:50%;
+	transform:translate(-50%,-50%);
+	padding:2px;
+	color:black;
+}
+.slider .space {
+	width:400%;
+	display:inline-block;
+}
+.scrollit::-webkit-scrollbar {
+  width: 20px;
+  height:30px;
+}
+.scrollit {
+  scrollbar-width: 20px;
+  scrollbar-color: green orange;
+}
+.scrollit::-webkit-scrollbar-track {
+  background: lightgray;
+}
+.scrollit::-webkit-scrollbar-thumb {
+  background-color: black;
+  border-radius: none;
+  border: none;
+  min-height:60px;
+}
+</style>
 
 <script>
+//
+var Slid3r = function( opt ) {
+	//
+	var sW = null/*scrollWidth*/, oW = null/*offsetWidth*/, sL = null/*scrollLeft*/, pR = null/*calculate percentage*/, valueOfOne = null, result=0;
+	var opt_elm      = ( typeof(opt)=='object' && typeof(opt['element'])!='undefined'?opt.element:null );
+	var opt_onscroll = ( typeof(opt)=='object' && typeof(opt['onscroll'])=='function'?opt.onscroll:null );
+	//
+	if( opt_elm==null ) {
+		console.warn("Error: you didn't define opt.element.",opt);
+		return false;
+	}
+	
+	//
+	this.getResult = function() {
+		return result;
+	}
+	//
+	function calcResult() {
+		pR     = (sL*100)/(sW-oW);         // current percent depend on scrollWidth
+		result = Math.ceil(pR*valueOfOne);
+	}
+	
+	//
+	sW         = opt_elm.scrollWidth;
+	oW         = opt_elm.offsetWidth;
+	sL         = opt_elm.scrollLeft; // max sL = sW - oW
+	valueOfOne = 255/100;    // 255 = max analog value, 100 = percent
+	//
+	opt_elm.onscroll = function(e) {
+		sW = opt_elm.scrollWidth;
+		sL = opt_elm.scrollLeft;
+		oW = opt_elm.offsetWidth;
+		calcResult();
+		console.info("onscroll sW: "+sW+", sL: "+sL+", pR: "+pR+", valueOfOne: "+valueOfOne+", result: "+result);
+		//
+		if(opt_onscroll!=null) opt_onscroll(e,pR,result);
+	}
+}
+//
+function qS(s) {return document.querySelector(s);}
+function iN(d) {var e=document.createElement('div');e.innerHTML = (new Date().toJSON())+" => "+JSON.stringify(d);qS("#d").prepend(e);}
 function Fetch( opt ) {
 	var href="";
 	if( typeof(opt)!='undefined' && typeof(opt['href'])!='undefined' ) {
 		href = opt.href;
 	}
 	else return;
-	
-	console.info("Fetch() using href",href);
-	
-	fetch(href, {  
+	//
+	fetch(href+(href.match(/\?/i)?"&":"?"), {  
 	    method :'GET',
-	    cache:'no-cache',  
+	    cache:'no-store',
+	    headers:new Headers({'content-type': 'application/json'}), 
     }).then(function (data) {
 		return data.json();
 	}).then(function(json) {
@@ -56,26 +148,56 @@ function Fetch( opt ) {
 		}
 	});
 }
+//
+var sliderSpeed = null;
+var sliderTurns = null;
+//
 function onLoad(e) {
+	//
 	if( document.location.pathname!="/" || document.location.search!="" ) {
 		window.history.replaceState({},"","/");
 	}
+	//
+	sliderSpeed = new Slid3r({
+		element:qS(".slider.hor"),
+		onscroll:function(e,pR,result) {
+			console.info("Slid3r.onscroll() ",result);
+			qS(".slider.hor .info").innerText = result+" speed.";
+			//
+			Fetch({
+				href:document.location.origin+"/MOTOR_A_SPEED?speed="+result,
+			});
+		},
+	});
+	//
+	qS(".slider.hor .info").innerText = sliderSpeed.getResult()+" speed.";
+	//
+	//qS("a[href='/reset']").setAttribute("href","/reset?fuckCache="+(new Date().getTime()));
 }
-function qS(s) {return document.querySelector(s);}
-function iN(d) {var e=document.createElement('div');e.innerHTML = (new Date().toJSON())+" => "+JSON.stringify(d);qS("#d").prepend(e);}
 window.onload = function(e) { onLoad(e); }
 </script>
 	</head>
 	
 	<body>
 		
-		<div align="center"><a href="/reset" style="float:left;">Reset panel</a><div style="clear:both;"></div><h3>Example of simple html control panel for Arduino or ESP32...</h3></div>
+		<div align="center">
+			<a href="/reset" style="float:left;">Reset panel</a><div style="clear:both;"></div><h3>Example of simple html control panel for Arduino or ESP32...</h3></div>
 		
 		<br>
 		
 		<!-- left side is used to move car left and right -->
 		<div class="leftSide">
-			<div><a href="/MOTOR_A_ON" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('start motor data: ',json);},});return false;">Start motor A</a> | <div style="display:none;" class="slider hor"><div class="cursor"></div></div> </div>
+			
+			<div>
+				<div><a href="/MOTOR_A_ON" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('start motor data: ',json);},});return false;">Start motor A</a></div>
+				<div class="sliderSpace">
+					<div class="slider hor scrollit">
+						<div class="space"></div>
+						<div class="info"></div>
+					</div>
+				</div>
+			</div>
+			
 			<a href="/MOTOR_A_OFF" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('stop motor data: ',json);},});return false;">Stop motor A</a> <br>
 			<a href="/BATTERY_LEVEL" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('battery level data: ',json);},});return false;">Check Battery Level</a> <br>
 			<a href="/DHTT" onclick="Fetch({href:this.href,onDone:function(json){iN(json);console.info('temperature data: ',json);},});return false;">Check Temperature with DHT11</a> <br>

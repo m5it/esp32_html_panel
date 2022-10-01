@@ -19,7 +19,7 @@ var FetchAll = function(url,data,size,ondone) {
 	var at=0,of=0;
 	//
 	this.fetch = function() {
-		var useUrl = url+"?partAt="+at+"&partOf="+of;
+		var useUrl = url+"?partAt="+at+"&partOf="+of+"&fuckCache="+urlencode((new Date().getTime()*1000));
 		console.info("using url",useUrl);
 		//
 		fetch(useUrl, {  

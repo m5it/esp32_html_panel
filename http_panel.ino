@@ -222,6 +222,7 @@ char * crc32b(const char* from);
 void cliHandler( void * client );
 void htmlHeader(WiFiClient cli, int code, int length, char type[]);
 void htmlDocument(WiFiClient cli, String html);
+String getURLPV(char urlargs[], char *name);
 
 //--
 // Default Arduino functions START
@@ -325,13 +326,13 @@ void cliHandler( void * client ) {
             char lowline[line.length()+1] = {0};
             line.toCharArray(lowline,line.length()+1);
             
-            //
+            // Fix the line
             if( line.length()>=3 && cmatch(fixline,"^\xa.*")==1 ) {
                 substring(line.c_str(),fixline,2,line.length());
                 substring(line.c_str(),lowline,2,line.length());
             }
             toLower(lowline);
-            //
+            // Header done
             if( !headDone && line=="\xa" ) {
                 headDone = true;
                 // Content-Length Not Set
@@ -340,7 +341,7 @@ void cliHandler( void * client ) {
                 }
                 // Content-Length is Set, continue retriving body
             }
-            //
+            // Header receiving
             else if(!headDone) {
                 // parse header command / option
                 if( cmatch(fixline,"^GET.*")==1 ||
@@ -393,12 +394,13 @@ void cliHandler( void * client ) {
                     free(tmp);
                 }
             }
-            // body end
+            // Body done
             else if( headDone && line=="\xa" ) {
                 break;
             }
-            // retrive body
+            // Body receiving
             else {
+                // If request is not allowed request then send 405 Not Allowed!
                 if( pmatch(cmd2,"^\/up\=true.*")==0 &&
                     pmatch(cmd2,"^\/upc\=true.*")==0 ) {
                     Serial.println("DEBUG BODY ADD NOT ALLOWED.");
@@ -407,14 +409,13 @@ void cliHandler( void * client ) {
                     break;
                 }
                 
-                //
+                // If received content is bigger or equal Content-Length we have all content, End.
                 if( length>0 && body.length() >= length ) {
                     Serial.println("DEBUG BODY ADD/ENDING...!");
                     break;
                 }
                 
-                //
-                Serial.println("DEBUG BODY ADD.. length vs body.length: ");
+                // Receive body
                 body += line+"\n";
                 //strcat(body,line.c_str());
             }
@@ -432,19 +433,8 @@ void cliHandler( void * client ) {
         if( !html_user_panel_ready && body.length()>0 && pmatch(cmd2,"^\/up\=true.*")==1 ) {
             Serial.println("DEBUG parsing new panel..");
             // parse number of parts of file and it position
-            char **args1 = split(cmd2,"?");
-            char **args2 = split(args1[1],"&");
-            for(int i=0; args2[i]!=NULL; i++) {
-                char **args3 = split(args2[i],"=");
-                if(i==0)      partAt = strtol(args3[1], NULL, 0);
-                else if(i==1) partOf = strtol(args3[1], NULL, 0);
-                free(args3[0]);
-                free(args3[1]);
-                free(args3);
-                free(args2[i]);
-            }
-            free(args2);
-            free(args1);
+            partAt = strtol(getURLPV(cmd2,"partAt").c_str(),NULL,0);
+            partOf = strtol(getURLPV(cmd2,"partOf").c_str(),NULL,0);
             // remove characters that are bad characters when you dont want them.. :D
             body.trim();
             // concat body parts and generate whole file (html user panel)
@@ -474,13 +464,14 @@ void cliHandler( void * client ) {
             setups = json_user_panel["setups"];
             for(int i=0; i<setups.size(); i++) {
                 String setupAction = setups[i]["action"]; // mode,DHT...
+                int gpio = setups[i]["gpio"];
+                int val  = setups[i]["value"];
                 //
                 if( setupAction=="mode" ) {
                     pinMode(setups[i]["gpio"],(setups[i]["value"]=="OUTPUT"?OUTPUT:INPUT));
                 }
                 //
                 else if( setupAction=="DHT" ) {
-                    Serial.println("DEBUG DHT setups!");
                     dht.setPinNType( setups[i]["gpio"], setups[i]["value"] );
                     dht.begin();
                 }
@@ -490,18 +481,19 @@ void cliHandler( void * client ) {
         // Reset uploaded panel
         else if( pmatch(cmd2, "^\/reset+$")==1 ) {
             Serial.println("DEBUG reseting to start_panel...");
-            html_user_panel = "";
+            /*html_user_panel = "";
             html_user_panel_ready = false;
             partAt=0;
             partOf=0;
             tasks.clear();
             actions.clear();
-            json_user_panel.clear();
+            json_user_panel.clear();*/
+            ESP.restart();
         }
     }
     
     //--
-    // Handle JSON Configured commands
+    // Handle JSON Configured commands/requests
     //---------------------------------
     // Loop trough json configured tasks and check if request match. Functions that can be executed here ex.: analogWrite, analogRead, 
     //   digitalWrite, digitalRead etc..
@@ -524,7 +516,16 @@ void cliHandler( void * client ) {
                 // todo DW = digitalWrite, DR = digitalRead, AW = analogWrite, AR = analogRead
                 int gpio         = actions[j]["gpio"];
                 int value        = actions[j]["value"];
-                String type      = actions[j]["type"];
+                String paramName = actions[j]["paramName"]; // If set then value is retrived from urls parameters
+                String type      = actions[j]["type"]; 
+                
+                // Retrive value from cmd2 (url) if paramName not empty
+                if( !paramName.isEmpty() && paramName!="null" && paramName!=NULL ) {
+                    char *cparamName = c2c(paramName.c_str());
+                    value = strtol(getURLPV(cmd2,cparamName).c_str(),NULL,0);
+                    free(cparamName);
+                }
+                
                 //--
                 // Digital Write
                 if( type=="DW" ) {
@@ -576,6 +577,9 @@ void cliHandler( void * client ) {
         }
     }
   
+    //--
+    // Handle response
+    //-----------------
     //
     if( error ) {
         String tmpJson;
@@ -628,7 +632,10 @@ void htmlHeader(WiFiClient cli, int code, int length, char type[]) {
         cli.println(tmp);
     }
     //
-    cli.println("Cache-Control: no-store");
+    //cli.println("Cache-Control: no-cache");
+    cli.println("Cache-Control: no-store, must-revalidate");
+    cli.println("Pragma: no-cache");
+    cli.println("Expires: 0");
     cli.println("Connection: close");
     cli.println("");
     free(tmp);
@@ -637,7 +644,31 @@ void htmlHeader(WiFiClient cli, int code, int length, char type[]) {
 void htmlDocument(WiFiClient cli, String html) {
     cli.println( html );
 }
-
+//
+String getURLPV(char urlargs[], char *name) {
+    if( cmatch(urlargs,"\?")==0 ) return "";
+    //
+    char **args1 = split(urlargs,"?");
+    char **args2 = split(args1[1],"&");
+    String ret   = "";
+    //
+    for(int i=0; args2[i]!=NULL; i++) {
+        char **args3 = split(args2[i],"=");
+        if( cmatch(args3[0],name)==1 ) {
+            ret = args3[1];
+        }
+        //
+        free(args3[0]);
+        free(args3[1]);
+        free(args3);
+        free(args2[i]);
+        //
+        if(ret!="") break;
+    }
+    free(args2);
+    free(args1);
+    return ret;
+}
 
 
 
