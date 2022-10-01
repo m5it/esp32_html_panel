@@ -65,4 +65,4 @@ Thanks for watching.*
 
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen2_v0.1.png)
 
-![alt text](https://github.com/m5it/http_panel/blob/main/screen4_v0.02.png)
+![alt text](https://github.com/m5it/http_panel/blob/main/screen5.png)
