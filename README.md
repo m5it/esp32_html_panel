@@ -17,7 +17,8 @@ Your control panel should be html file with some additions. Addition is new HTML
 
 \<arduino>
 
-{"setups":[{"gpio":26,"action":"DHT", "value":11},{"gpio":27,"action":"mode", "value":"OUTPUT"},{"gpio":14,"action":"mode", "value":"OUTPUT"},{"gpio":13,"action":"mode", "value":"OUTPUT"}], "tasks":[{"title":"Start motor A","request":"/MOTOR_A_ON", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":1,"type":"DW"},{"gpio":13,"value":130,"type":"AW"}]},{"title":"Stop motor A","request":"/MOTOR_A_OFF", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":0,"type":"DW"}]},{"title":"Check battery level","request":"/BATTERY_LEVEL", "actions":[{"gpio":34,"value":0,"type":"AR"}]},{"title":"Check temperature with DHT11","request":"/DHTT", "actions":[{"gpio":0,"value":0,"type":"DHTT"}]},{"title":"Check humidity with DHT11","request":"/DHTH", "actions":[{"gpio":0,"value":0,"type":"DHTH"}]}]}
+{"setups":[{"gpio":26,"action":"DHT", "value":11},{"gpio":27,"action":"mode", "value":"OUTPUT"},{"gpio":14,"action":"mode", "value":"OUTPUT"},{"gpio":13,"action":"mode", "value":"OUTPUT"}], "tasks":[{"title":"Start motor A","request":"/MOTOR_A_ON", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":1,"type":"DW"},{"gpio":13,"value":130,"type":"AW"}]},{"title":"Stop motor A","request":"/MOTOR_A_OFF", "actions":[{"gpio":27,"value":0,"type":"DW"},{"gpio":14,"value":0,"type":"DW"}]},{"title":"Check battery level","request":"/BATTERY_LEVEL", "actions":[{"gpio":34,"value":0,"type":"AR"}]},{"title":"Check temperature with DHT11","request":"/DHTT", "actions":[{"gpio":0,"value":0,"type":"DHTT"}]},{"title":"Check humidity with DHT11","request":"/DHTH", "actions":[{"gpio":0,"value":0,"type":"DHTH"}]},{"title":"Motor A Speed","request":"/MOTOR_A_SPEED", "actions":[{"gpio":13,"value":0,"type":"AW","paramName":"speed"}]}]}
+
 
 
 \</arduino>
@@ -36,6 +37,7 @@ Your control panel should be html file with some additions. Addition is new HTML
         - gpio
         - value
         - type
+        - paramName (if this is set then value is retrived from url parameter)
 
 # Options
 - http://192.168.4.1/reset      # To reset to startup panel.
