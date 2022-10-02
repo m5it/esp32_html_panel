@@ -48,7 +48,8 @@ Your control panel should be html file with some additions. Addition is new HTML
 - digitalRead(), digitalWrite()
 - executing multiple actions to run motor driver L298 and similar.
 - reading data for DHT11, DHT22 and DHT21 sensors. (Required modified DHT library that can be found <a href="https://github.com/m5it/DHT_sensor_library_modified">here</a>)
-- (30.9.22) added support to upload user panel bigger than is defined stack size.
+- upload user panel bigger than is defined stack size.
+- setting value with url parameter. Ex.: ?speed=255
 
 # File definitions:
  - http_panel.ino    ( Arduino/ESP32 code that runs json configurable web server and currently support wifi station only. )
