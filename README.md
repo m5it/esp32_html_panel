@@ -83,4 +83,5 @@ Thanks for watching.*
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen5.png)
 
 
-
+# Donate - Welcome - Thanks!
+<a href="https://www.paypal.com/donate/?hosted_button_id=QGRYL4SL5N4FE"> ![alt text](https://www.paypal.com/donate/?hosted_button_id=QGRYL4SL5N4FE) </a>
