@@ -28,16 +28,30 @@ Your control panel should be html file with some additions. Addition is new HTML
 # Controller JSON configuration definitions & tree:
 - setups   ( actions defined here are executed only once, when panel is installed. Here should exec functions like: pinMode(xx,OUTPUT) etc..
     - gpio
-    - action
+    - action ("mode" OR "DHT",)
     - value
 - tasks    ( these actions are checked and executed when happen specific request. to start/stop motor, light etc. )
     - title
-    - request
+    - request ( string or regex. Ex.: ?START_MOTOR or ^START\_MOTOR+$
     - actions
         - gpio
         - value
-        - type
-        - paramName (if this is set then value is retrived from url parameter)
+        - type      ( DW, DR, AW, AR, DHTT, DHTH, )
+        - paramName ( if this is set then value is retrived from url parameter )
+
+# Explanation of setups -> action:
+- mode ( execute of function pinMode(..., ...) )
+- DHT  ( execute of function setPinNType(..., ...) and dht.begin() defined in DHT modified library )
+- ... what ever will be added
+
+# Explanation of tasks -> actions -> type:
+- DW   ( execute function digitalWrite() )
+- DR   ( execute function digitalRead() and return it value )
+- AW   ( execute function analogWrite() )
+- AR   ( execute function analogRead() and return it value )
+- DHTT ( execute function dht.readTemperature() defined in DHT modified library and return it value )
+- DHTH ( execute function dht.readHumidity() defined in DHT modified library and return it value )
+- ... what ever will be added
 
 # Options
 - http://192.168.4.1/reset      # To reset to startup panel.
