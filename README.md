@@ -84,4 +84,4 @@ Thanks for watching.*
 
 
 # Donate - Welcome - Thanks!
-<a href="https://www.paypal.com/donate/?hosted_button_id=QGRYL4SL5N4FE"> ![alt text](https://www.paypal.com/donate/?hosted_button_id=QGRYL4SL5N4FE) </a>
+<a href="https://www.paypal.com/donate/?hosted_button_id=QGRYL4SL5N4FE"> Donate </a>
