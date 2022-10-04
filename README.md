@@ -81,3 +81,7 @@ Thanks for watching.*
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen2_v0.1.png)
 
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen5.png)
+
+
+# Donate - Welcome - Thanks !
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](w4d4f4k.es@gmail.com)
