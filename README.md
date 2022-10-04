@@ -37,7 +37,7 @@ Your control panel should be html file with some additions. Addition is new HTML
         - gpio
         - value
         - type      ( DW, DR, AW, AR, DHTT, DHTH, )
-        - paramName ( if this is set then value is retrived from url parameter )
+        - paramName ( if this is set then value is retrived from url parameter. Ex.:  ?MOTOR_SPEED&speed=255 )
 
 # Explanation of setups -> action:
 - mode ( execute of function pinMode(..., ...) )
