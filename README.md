@@ -1,4 +1,4 @@
-ESP32 http control panel. ( In developement but have it logic..:) )
+ESP32 (tested: wroom) http control panel. ( In developement but have it logic..:) )
 
 (From 29.9.22 no more memory problems!!! Uiii)
 
