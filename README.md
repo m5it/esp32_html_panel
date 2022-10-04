@@ -28,11 +28,11 @@ Your control panel should be html file with some additions. Addition is new HTML
 # Controller JSON configuration definitions & tree:
 - setups   ( actions defined here are executed only once, when panel is installed. Here should exec functions like: pinMode(xx,OUTPUT) etc..
     - gpio
-    - action ("mode" OR "DHT",)
+    - action ("mode" or "DHT",)
     - value
 - tasks    ( these actions are checked and executed when happen specific request. to start/stop motor, light etc. )
     - title
-    - request ( string or regex. Ex.: ?START_MOTOR or ^START\_MOTOR+$
+    - request ( string or regex. Ex.: ?START_MOTOR or ^START\_MOTOR+$ )
     - actions
         - gpio
         - value
