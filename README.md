@@ -32,7 +32,7 @@ Your control panel should be html file with some additions. Addition is new HTML
     - value
 - tasks    ( these actions are checked and executed when happen specific request. to start/stop motor, light etc. )
     - title
-    - request ( string or regex. Ex.: ?START_MOTOR or ^START\_MOTOR+$ )
+    - request ( string or regex. Ex.: ?START_MOTOR or ^\?START\_MOTOR+$ )
     - actions
         - gpio
         - value
