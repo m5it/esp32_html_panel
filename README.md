@@ -108,7 +108,7 @@ Thanks for watching.*
 
 # Screenshots
 
-Upload panel:
+
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen2_v0.1.png)
 
 Example panel:
