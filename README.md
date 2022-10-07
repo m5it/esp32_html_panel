@@ -108,10 +108,16 @@ Thanks for watching.*
 
 # Screenshots
 
+Upload panel:
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen2_v0.1.png)
 
+Example panel:
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen5.png)
 
+Example remote car panel:
+![alt text](https://github.com/m5it/http_panel/blob/main/Screenshot%20from%202022-10-07%2002-06-18.png)
+
+Example of running car (video):
 [![Watch the video!](https://thumbs.dreamstime.com/b/r-149859581.jpg)](https://github.com/m5it/http_panel/blob/main/IMG_3228.MOV)
 
 # Donate - Welcome - Thanks!
