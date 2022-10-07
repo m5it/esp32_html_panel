@@ -117,7 +117,7 @@ Example panel:
 Example remote car panel:
 ![alt text](https://github.com/m5it/http_panel/blob/main/Screenshot%20from%202022-10-07%2002-06-18.png)
 
-Example of running car (video):
+Example of running car (video). Panel is supported for Android. Slide (https://github.com/m5it/html_js_4_fun_slid3r)...
 [![Watch the video!](https://thumbs.dreamstime.com/b/r-149859581.jpg)](https://github.com/m5it/http_panel/blob/main/IMG_3228.MOV)
 
 # Donate - Welcome - Thanks!
