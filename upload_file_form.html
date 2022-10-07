@@ -12,33 +12,51 @@
 <script>
 //
 var rd = null;
-var FetchAll = function(url,data,size,ondone) {
+var FetchAll = function(url,data,size,ondone,opt) {
 	//
 	var _this = this;
 	var parts = [];
-	var at=0,of=0;
+	this.at=0;
+	this.of=0;
+	var cntfail = 0;
+	//
+	var opt_oncontinue = ( typeof(opt)=='object' && typeof(opt['oncontinue'])=='function'?opt.oncontinue:null );
+	var opt_oncatch    = ( typeof(opt)=='object' && typeof(opt['oncatch'])=='function'?opt.oncatch:null );
+	var opt_onfail     = ( typeof(opt)=='object' && typeof(opt['onfail'])=='function'?opt.onfail:null );
 	//
 	this.fetch = function() {
-		var useUrl = url+"?partAt="+at+"&partOf="+of+"&fuckCache="+urlencode((new Date().getTime()*1000));
+		var useUrl = url+"?partAt="+_this.at+"&partOf="+_this.of+"&fuckCache="+urlencode((new Date().getTime()*1000));
 		console.info("using url",useUrl);
 		//
 		fetch(useUrl, {  
 		    method :'POST',
 		    cache:'no-store',
-		    headers:{"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"},  
-		    body   :urlencode(parts.shift()),
+		    headers:{"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"},  
+		    body   :urlencode(parts[_this.at]),
 	    }).then(function (data) {
 	        return data.json();
 	    }).then(function(json) {
-			if( parts.length ) {
-				at++;
+			if( _this.at<(_this.of-1) ) {
+				_this.at++;
 				_this.fetch();
+				if( opt_oncontinue!=null ) opt_oncontinue(_this);
 			}
 			else {
 				if(typeof(ondone)=='function') {
-					ondone(json);
+					ondone(_this,json);
 				}
 			}
+		}).catch(function(E) {
+			console.warn("ERROR FetchAll() at: "+_this.at+", of: "+_this.of+", error: ",E);
+			// What to do on ERROR ? We will see...
+			if( cntfail>5 ) {
+				console.warn("ERROR FetchAll() Failed more than 5 times. Stopping!");
+				if( opt_onfail!=null ) opt_onfail(_this);
+			}
+			else {
+				if( opt_oncatch!=null ) opt_oncatch(_this);
+			}
+			cntfail++;
 		});
 	}
 	
@@ -60,7 +78,7 @@ var FetchAll = function(url,data,size,ondone) {
 			cnt++;
 		}
 	}
-	of=parts.length;
+	_this.of=parts.length;
 	//
 	this.fetch();
 }
@@ -105,6 +123,9 @@ function loadFile(fp) {
 			var upc = atmp[0].substr(9,atmp[0].length);
 			var up  = atmp[1];
 			
+			console.warn("upload_file_form() upc("+upc.length+")",upc);
+			console.warn("upload_file_form() up("+up.length+")");
+			
 			document.querySelector("div.logfield > label").innerText = "Please wait 2 / 4 ...";
 			document.querySelector("div.info").innerText += "2.) Successful parsing uploaded file\n";
 			
@@ -113,22 +134,41 @@ function loadFile(fp) {
 			    method :'POST',
 			    cache:'no-store',
 			    headers:{"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"},  
-			    body   :urlencode(upc),
+			    body   :JSON.stringify(JSON.parse(upc)),
 		    }).then(function (data1) {
 		        console.info("returned data for upc: ",data1);
 		        
 		        document.querySelector("div.logfield > label").innerText = "Please wait 3 / 4 ...";
 		        document.querySelector("div.info").innerText += "3.) Configuration looks good\n";
+		        var chk=false;
 		        //
-			    (new FetchAll(document.location.origin+"/up=true",up,1024,function(json){
+			    (new FetchAll(document.location.origin+"/up=true",up,1024,function(H,json){
 					document.querySelector("div.logfield > label").innerText = "Please wait 4 / 4 ...";
-			        document.querySelector("div.info").innerText += "4.) All looks ready... Reloading...\n";
+			        document.querySelector("div.info").innerText += "All looks good... Reloading...\n";
 			        //
 			        setTimeout(function() {
 						document.location.href=document.location.href;
 					},1000);
+				},{
+					oncatch:function(H) {
+						H.fetch(); // Repeat on error
+					},
+					onfail:function(H) {
+						alert("Something went wrong. Try debug the thing!");
+					},
+					oncontinue:function(H) {
+						if(!chk) {
+							document.querySelector("div.info").innerText += "4.) Num parts to upload: "+H.of+", ";
+							chk=true;
+						}
+						else  document.querySelector("div.info").innerText += ".";
+					},
 				}));
-		    });
+		    }).catch(function(E) {
+				console.warn("ERROR uploading configuration!");
+				// What to do on ERROR ? We will see...
+				return false;
+			});
 		}
 		rd.readAsText(fp.files[0]);
 	}

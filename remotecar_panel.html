@@ -1,0 +1,827 @@
+<arduino>
+{
+	"setups":[
+		{"gpio":27,"action":"mode", "value":"OUTPUT"},
+		{"gpio":26,"action":"mode", "value":"OUTPUT"},
+		{"gpio":25,"action":"mode", "value":"OUTPUT"},
+		{"gpio":33,"action":"mode", "value":"OUTPUT"},
+		{"gpio":23,"action":"mode", "value":"OUTPUT"},
+		{"gpio":32,"action":"mode", "value":"OUTPUT"}
+	], 
+	"tasks":[
+		{"title":"Start motor A","request":"/MOTOR_A_ON_FORWARD", "actions":[
+			{"gpio":26,"value":1,"type":"DW"},
+			{"gpio":25,"value":0,"type":"DW"},
+			{"gpio":27,"value":255,"type":"AW"}]},
+		{"title":"Start motor A","request":"/MOTOR_A_ON_BACKWARD", "actions":[
+			{"gpio":26,"value":0,"type":"DW"},
+			{"gpio":25,"value":1,"type":"DW"},
+			{"gpio":27,"value":255,"type":"AW"}]},
+		{"title":"Stop motor A","request":"/MOTOR_A_OFF", "actions":[
+			{"gpio":26,"value":0,"type":"DW"},
+			{"gpio":25,"value":0,"type":"DW"}]},
+		{"title":"Motor A Speed","request":"/MOTOR_A_SPEED", "actions":[
+			{"gpio":27,"value":0,"type":"AW","paramName":"speedA"}]},
+		{"title":"Start motor A and turn Left (because of broken part)","request":"/MOTOR_A_LEFT", "actions":[
+			{"gpio":26,"value":0,"type":"DW"},
+			{"gpio":25,"value":1,"type":"DW"},
+			{"gpio":27,"value":255,"type":"AW"},
+			{"gpio":0,"value":700,"type":"delay"},
+			{"gpio":27,"value":150,"type":"AW"},
+			{"gpio":0,"value":2000,"type":"delay"},
+			{"gpio":26,"value":0,"type":"DW"},
+			{"gpio":25,"value":0,"type":"DW"}]},
+		{"title":"Start motor A and turn Right (because of broken part)","request":"/MOTOR_A_RIGHT", "actions":[
+			{"gpio":26,"value":1,"type":"DW"},
+			{"gpio":25,"value":0,"type":"DW"},
+			{"gpio":27,"value":255,"type":"AW"},
+			{"gpio":0,"value":700,"type":"delay"},
+			{"gpio":27,"value":150,"type":"AW"},
+			{"gpio":0,"value":2000,"type":"delay"},
+			{"gpio":26,"value":0,"type":"DW"},
+			{"gpio":25,"value":0,"type":"DW"}]},
+		{"title":"Start motor B","request":"/MOTOR_B_ON_FORWARD", "actions":[
+			{"gpio":33,"value":0,"type":"DW"},
+			{"gpio":32,"value":1,"type":"DW"},
+			{"gpio":23,"value":1,"type":"AW"}]},
+		{"title":"Start motor B","request":"/MOTOR_B_ON_BACKWARD", "actions":[
+			{"gpio":33,"value":1,"type":"DW"},
+			{"gpio":32,"value":0,"type":"DW"},
+			{"gpio":23,"value":1,"type":"AW"}]},
+		{"title":"Stop motor B","request":"/MOTOR_B_OFF", "actions":[
+			{"gpio":33,"value":0,"type":"DW"},
+			{"gpio":32,"value":0,"type":"DW"}]},
+		{"title":"Motor B Speed","request":"/MOTOR_B_SPEED", "actions":[
+			{"gpio":23,"value":0,"type":"AW","paramName":"speedB"}]}
+		]
+}
+</arduino>
+<html>
+	<head>
+		<meta name="viewport" content="width=100%, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta charset="UTF-8">
+		<title>ESP32 + L298N + HTTP_Panel = Remote Car Panel :)*</title>
+<style>
+body { margin:20px 0px 0px 0px; padding:0px; }
+.leftSide, .rightSide {
+	float:left;
+	width:50%;
+	height:63vh;
+	box-sizing:border-box;
+	position:relative;
+}
+.leftSide {
+}
+.rightSide {}
+.options {
+	position:fixed;
+	top:0px;
+	left:0px;
+	right:0px;
+}
+.options .menu {
+	float:left;
+}
+.options .menu > div { 
+	margin:0px 13px;
+	display:inline-block;
+}
+.options h3 {
+	padding:0px;
+	margin:0px auto;
+	text-align:center;
+}
+#d {
+	overflow-y:auto;
+	max-height:50vh;
+	display:none;
+	position:absolute;
+	top:30px;
+	left:0px;
+	overflow:auto;
+	box-shadow:0px 0px 2px 1px gray;
+}
+#d.active {
+	display:inline-block;
+	background:white;
+}
+</style>
+<style>
+.slider {
+	position:absolute;
+	display:inline-block;
+	top:50%;
+	left:50%;
+	transform:translate(-50%,-50%);
+}
+.slider > div {
+	position:relative;
+}
+.slider .field {
+	display:inline-block;
+}
+.slider .field:not(.active) {
+	scroll-behavior: smooth;
+}
+.slider .info {
+	position:absolute;
+	padding: 2px;
+	color: black;
+	font-size: 0.7em;
+	white-space:nowrap;
+}
+/* horizontal */
+.slider.hor .field {
+	width:200px;
+	height:56px;
+	overflow-x:scroll;
+	overflow-y: hidden;
+}
+.slider.hor > div:before, .slider.hor > div:after, .slider.ver > div:before, .slider.ver > div:after {
+	position:absolute;
+	padding:2px;
+	color:black;
+	background:gray;
+	box-shadow:0px 0px 2px 1px lightgray;
+	font-size:0.7em;
+}
+.slider.hor > div:before {
+	left:0px;
+	top:-18px;
+	content:"LEFT";
+}
+.slider.hor > div:after {
+	right:0px;
+	top:-18px;
+	content:"RIGHT";
+}
+.slider.hor .info {
+	top: -20px;
+	left: 50%;
+	transform: translate(-50%,0px);
+}
+
+/* vertical */
+.slider.ver .field {
+	height:200px;
+	width:56px;
+	overflow-y:scroll;
+	overflow-x: hidden;
+}
+.slider.ver > div:before {
+	top:0px;
+	left:60px;
+	content:"FORWARD";
+}
+.slider.ver > div:after {
+	bottom:0px;
+	left:60px;
+	content:"BACKWARD";
+}
+.slider.ver .info {
+	top: 50%;
+	left:60px;
+	transform: translate(0px,-50%);
+}
+.slider.hor .space {
+    width:400%;
+    display:inline-block;
+    height:55px;
+}
+.slider.ver .space {
+    height:400%;
+    display:inline-block;
+    width:55px;
+}
+.slider.ver .cover, .slider.hor .cover {
+	position:absolute;
+	top:0px;
+	left:0px;
+	right:0px;
+	bottom:0px;
+	z-index:2;
+}
+/**/
+.scrollit::-webkit-scrollbar {
+  width: 55px;
+  height:55px;
+}
+.scrollit {
+  scrollbar-width: 20px;
+  scrollbar-color: green orange;
+}
+.scrollit::-webkit-scrollbar-track {
+  background: lightgray;
+  border-radius:13px;
+}
+.scrollit::-webkit-scrollbar-thumb {
+  background-color: black;
+  border-radius: none;
+  border: none;
+  min-height:60px;
+  border-radius:13px;
+}
+</style>
+
+<script>
+//
+function IsMobile() {
+	var ua = navigator.userAgent;
+	if( ua.match( /iPhone OS/i ) ) return true;
+	else if( ua.match( /Linux\; Android/i ) ) return true;
+	else return false;
+}
+//
+/**
+  * 4.10.22 (pure JS)
+  * ------------------------------------------------------------
+  * https://github.com/m5it/html_js_4_fun_slid3r
+  * ------------------------------------------------------------
+  * Slid3r() thing by t3ch aka B.K. aka grandekos etc...
+  --------------------------------------------------------
+  * first time used to control remote car with mobile and ESP32 wroom
+  --------------------------------------------------------------
+  * Example usage:
+  * (new Slid3r({
+  *      doubleside:true,
+  *      element   :document.querySelector(".slider.hor .field"),
+  *      onscroll  :function(H) {
+  *          document.querySelector(".slider.hor .info").innerText = H.getResult()+" speed.";
+  *      },
+  *  }));
+  * 
+  */
+var Slid3r = function( opt ) {
+	//
+	var opt_elm        = ( typeof(opt)=='object' && typeof(opt['element'])!='undefined'?opt.element:null );
+	var opt_onscroll   = ( typeof(opt)=='object' && typeof(opt['onscroll'])=='function'?opt.onscroll:null );
+	var opt_onstart    = ( typeof(opt)=='object' && typeof(opt['onstart'])=='function'?opt.onstart:null );
+	var opt_onend      = ( typeof(opt)=='object' && typeof(opt['onend'])=='function'?opt.onend:null );
+	var opt_onended    = ( typeof(opt)=='object' && typeof(opt['onended'])=='function'?opt.onended:null );
+	var opt_vertical   = ( typeof(opt)=='object' && typeof(opt['vertical'])!='undefined'?opt.vertical:false );     // default=false=horisontal OR vertical=true
+	var opt_doubleside = ( typeof(opt)=='object' && typeof(opt['doubleside'])!='undefined'?opt.doubleside:false ); // doubleside=true then cursor is centered in middle=0, bottom=-255, top=255 or horizontal left,right,center..
+	var opt_maxresult  = ( typeof(opt)=='object' && typeof(opt['maxresult'])!='undefined'?opt.maxresult:255 );
+	var opt_mobile     = ( typeof(opt)=='object' && typeof(opt['mobile'])!='undefined'?opt.mobile:false );
+	
+	//
+	if( opt_elm==null ) {
+		console.warn("Error: you didn't define opt.element.",opt);
+		return false;
+	}
+	//
+	var _this      = this,
+	    sWH        = null/*scrollWidth|scrollHeight -> depend on opt_vertical*/, 
+	    oWH        = null/*offsetWidth|offsetHeight -> depend on opt_vertical*/, 
+	    sTL        = null/*scrollLeft|scrollTop     -> depend on opt_vertical*/, 
+	    pR         = null/*calculate percentage*/, 
+	    valueOfOne = null, 
+	    result     = 0,
+	    scrollSize = null/*size of scroll space*/,
+	    // events when fired scroll is centered. (opt_doubleside=true)
+	    events     = (opt_mobile?["touchend","touchstart","touchmove",]:["mouseup","mousedown","mousemove",]),
+	    check_ended=false,
+	    tmp_elm    = opt_elm.querySelector(".cover");
+	//
+	this.scrollSpeed = (opt_vertical?(opt_elm.scrollHeight/100)-(opt_elm.offsetHeight/100):(opt_elm.scrollWidth/100)-(opt_elm.offsetWidth/100));
+	//
+	console.info("Slid3r() DEBUG scrollSpeed: "+_this.scrollSpeed+", tmp_elm",tmp_elm);
+	//
+	this.getResult = function() {
+		return result;
+	}
+	//
+	function calcResult() {
+		scrollSize = sWH - oWH;
+		//
+		if( opt_doubleside ) {
+			var tmp = 0;
+			if( sTL<( scrollSize/2 ) ) {
+				tmp =  (scrollSize/2)-sTL;
+			}
+			else {
+				tmp =  sTL-(scrollSize/2);
+			}
+			pR = ((tmp*2)*100)/(sWH-oWH);
+		}
+		else {
+			pR = (sTL*100)/(sWH-oWH);         // current percent depend on scrollWidth
+		}
+		result = Math.ceil(Math.round(pR)*valueOfOne);
+		// Make value negative so we know what side scroll is dragged
+		if( opt_doubleside && ((!opt_vertical && sTL<( scrollSize/2 )) || (opt_vertical && sTL>( scrollSize/2 ))) ) {
+			result = result * (-1);
+		}
+	}
+	//
+	function centerScroll() {
+		console.info("Slid3r()->centerScroll() start.");
+		//
+		if( opt_vertical ) opt_elm.scrollTop  = scrollSize/2;
+		else               opt_elm.scrollLeft = scrollSize/2;
+	}
+	//
+	function onEnd() {
+		opt_elm.classList.remove("active");
+		//
+        if(opt_doubleside) {
+            centerScroll();
+        }
+        touch = null;
+        start = false;
+        //
+        if     (opt_onend!=null) {
+            opt_onend(_this);
+            check_ended = true;
+        }
+	}
+	//
+	sWH        = (opt_vertical?opt_elm.scrollHeight:opt_elm.scrollWidth);
+	oWH        = (opt_vertical?opt_elm.offsetHeight:opt_elm.offsetWidth);
+	sTL        = (opt_vertical?opt_elm.scrollTop:opt_elm.scrollLeft);
+	valueOfOne = opt_maxresult/100;    // 255 = max analog value, 100 = percent
+	calcResult();
+	
+	// on initialization, Center cursor if double side
+	if( opt_doubleside ) {
+		centerScroll();
+	}
+	
+	var touches = null;
+	var touchn  = 0;
+	var X=0,Y=0;
+	var start=false;
+	
+	// init events to center scroll when button is released
+	for(var i=0; i<events.length;i++) {
+		(function(i) {
+			console.info("Slid3r() initializing event: ",events[i]);
+			//
+			tmp_elm.addEventListener(events[i],function(e) {
+				if(e.type=="touchstart"||e.type=="mousedown") {
+					//
+					opt_elm.classList.add("active");
+					check_ended = false;
+					//
+					X=0, Y=0;
+					start=true;
+					//
+					if(e.type=="touchstart") {
+					    touches = e.touches || e.changedTouches;
+					    if     (touches.length>0) {
+							touchn = touches.length-1;
+						    //var touch   = e.touches[0] || e.changedTouches[0];
+						    var touch   = e.touches[touchn] || e.changedTouches[touchn];
+			                X = touch.pageX; 
+			                Y = touch.pageY;
+						}
+						console.info("Slid3r() touchstart touches.length: "+touches.length+", touchn: "+touchn+", touch: ",touch);
+					}
+					else {
+						X = e.pageX;
+						Y = e.pageY;
+						console.info("Slid3r() mousedown started. x: "+X+", y: "+Y);
+					}
+					//
+					if(opt_onstart!=null) opt_onstart(_this);
+				}
+				else if( e.type=="touchend" || e.type=="mouseup" ) {
+					if(!start) return false;
+					//
+					e.preventDefault();
+					onEnd();
+				}
+				//
+				else if( e.type=="touchmove" || e.type=="mousemove" ) {
+					if(!start) return false;
+					//
+					e.preventDefault();
+		
+					//
+					var x=0,y=0;
+					
+					if( e.type=="touchmove" ) {
+						//
+						var curtouches = e.touches || e.changedTouches;
+						//var touch = e.touches[0] || e.changedTouches[0];
+						var touch = e.touches[touchn] || e.changedTouches[touchn];
+			            x = touch.pageX;
+			            y = touch.pageY;
+					}
+					else {
+						x = e.pageX;
+						y = e.pageY;
+					}
+	                //-- calc moved distance in px from previous move or first mousedown/touch
+	                var nx = x-X;
+	                var ny = y-Y;
+	                //
+	                if( opt_vertical ) {
+						opt_elm.scrollTop = (opt_elm.scrollTop + (ny*_this.scrollSpeed));
+					}
+					else {
+						opt_elm.scrollLeft = (opt_elm.scrollLeft + (nx*_this.scrollSpeed));
+					}
+					//
+					X=x;
+	                Y=y;
+				}
+			});
+		})(i);
+	}
+	
+	//
+	if(!opt_mobile) {
+		document.addEventListener("mouseup",function(e) {
+			//
+			e.preventDefault();
+			if( start ) onEnd();
+		});
+	}
+	
+	// init onscroll event.
+	opt_elm.onscroll = function(e) {
+		//
+		sWH     = (opt_vertical?opt_elm.scrollHeight:opt_elm.scrollWidth);
+		oWH     = (opt_vertical?opt_elm.offsetHeight:opt_elm.offsetWidth);
+		sTL     = (opt_vertical?opt_elm.scrollTop:opt_elm.scrollLeft);
+		//
+		calcResult();
+		
+		//console.warn("Slid3r() sWH: "+sWH+", oWH: "+oWH+", sTL: "+sTL+", valueOfOne: "+valueOfOne+", pR: "+pR+", result: "+result);
+		//
+		if( check_ended && result==0 && opt_onended!=null ) opt_onended(_this);
+		// Fire opt_onscroll() if defined.
+		if(opt_onscroll!=null) opt_onscroll(_this);
+	}
+}
+
+//
+function qS(s) {return document.querySelector(s);}
+function iN(d) {var e=document.createElement('div');e.innerHTML = (new Date().toJSON())+" => "+JSON.stringify(d);qS("#d").prepend(e);}
+function Fetch( opt ) {
+	var opt_signal  = ( typeof(opt)!='undefined' && typeof(opt['signal'])!='undefined'?opt.signal:null ); // AbortController
+	var opt_ondone  = ( typeof(opt)!='undefined' && typeof(opt['ondone'])=='function'?opt.ondone:null );
+	var opt_oncatch = ( typeof(opt)!='undefined' && typeof(opt['oncatch'])=='function'?opt.oncatch:null );
+	var opt_href="";
+	if( typeof(opt)!='undefined' && typeof(opt['href'])!='undefined' ) {
+		opt_href = opt.href;
+	}
+	else return;
+	//
+	fetch(opt_href, {  
+		method :'GET',
+		cache  :'no-store',
+		headers:new Headers({'Content-Type': 'application/json'}),
+		signal :opt_signal,
+	}).then(function (data) {
+		return data.json();
+	}).then(function(json) {
+		//
+		if( opt_ondone!=null ) {
+			opt_ondone( json );
+		}
+		//else {
+		//  console.info("Fetch() opt.onDone() not defined!",json);
+		//}
+	}).catch(function(E) {
+		console.warn("Fetch() ERROR: ",E);
+		// What to do on ERROR ? We will see... (repeat action...)
+		if( opt_oncatch!=null ) {
+			opt_oncatch( E );
+		}
+	});
+}
+//
+var sliderTurn     = null,
+	sliderTurnOn   = false,
+	sliderTurnCon  = null,
+	//
+	sliderSpeed    = null,
+	sliderSpeedOn  = false,
+	sliderSpeedCon = null;//new AbortController().abort();
+//
+function onLoad(e) {
+	//
+	if( document.location.pathname!="/" || document.location.search!="" ) {
+		window.history.replaceState({},"","/");
+	}
+	
+	//--
+	// Init sliders. (speed, turns)
+	//
+	sliderTurn = (new Slid3r({
+		mobile    :IsMobile(),
+		doubleside:true,
+		element   :qS(".slider.hor .field"),
+		onscroll  :function(H) {
+			console.info("Slid3r.onscroll() ",H.getResult());
+			var res = parseInt(H.getResult());
+			if( res<0 ) res = res * (-1);
+			//
+			qS(".slider.hor .info").innerText = H.getResult()+"/"+res+" speed.";
+			//
+			if( sliderTurnCon!=null ) {
+				console.info("sliderTurn->onscroll() waiting...");
+				return;
+			}
+			sliderTurnCon = new AbortController();
+			//
+			//if( sliderTurnOn==false ) {
+			console.info("sliderTurn->onscroll() turning on.");
+			if( H.getResult()>0 ) {
+				Fetch({
+					href:document.location.origin+"/MOTOR_A_ON_FORWARD",
+					signal:sliderTurnCon.signal,
+					ondone:function(H) {
+						sliderTurnCon = null;
+						console.info("sliderTurn->onscroll() turning on FORWARD done.");
+					},
+					oncatch:function(E) { sliderTurnCon=null; },
+				});
+			}
+			else {
+				Fetch({
+					href:document.location.origin+"/MOTOR_A_ON_BACKWARD",
+					signal:sliderTurnCon.signal,
+					ondone:function(H) {
+						sliderTurnCon = null;
+						console.info("sliderTurn->onscroll() turning on BACKWARD done.");
+					},
+					oncatch:function(E) { sliderTurnCon=null; },
+				});
+			}
+			//	sliderTurnOn = true;
+			//}
+			//
+			/*Fetch({
+				href:document.location.origin+"/MOTOR_A_SPEED?speedA="+res,
+				signal:sliderTurnCon.signal,
+				ondone:function(json) {
+					sliderTurnCon = null;
+					console.info("sliderTurn->onscroll() setting turn speed done.");
+				},
+				oncatch:function(E) { 
+					sliderTurnCon=null;
+					console.warn("sliderTurn->onscroll() Failed set turn speed",res); 
+				},
+			});*/
+		},
+		onstart:function(H) { 
+			console.info("onstart .hor",H.getResult());
+			//
+			if( H.getResult()==0 ) return;
+			//
+			if( sliderTurnOn==false ) {
+				if( H.getResult()>0 ) {
+					Fetch({
+						href:document.location.origin+"/MOTOR_A_ON_FORWARD",
+					});
+				}
+				else {
+					Fetch({
+						href:document.location.origin+"/MOTOR_A_ON_BACKWARD",
+					});
+				}
+				sliderTurnOn = true;
+			}
+		},
+		onend:function(H) { 
+			console.info("onend .hor",H.getResult());
+			sliderTurnCon = null;
+		},
+		onended:function(H) { 
+			console.info("onended .hor",H.getResult());
+			Fetch({
+				href:document.location.origin+"/MOTOR_A_OFF",
+				ondone:function(json) {
+					sliderTurnCon=null;
+					console.info("sliderTurn->onended() done.",json);
+				},
+				oncatch:function(E) { 
+					sliderTurnCon=null;
+					console.warn("sliderTurn->onended() Failed."); 
+				},
+				
+			});
+			sliderTurnOn = false;
+		},
+	}));
+	//
+	qS(".slider.hor .info").innerText = sliderTurn.getResult()+" speed.";
+	
+	//
+	sliderSpeed = (new Slid3r({
+		mobile    :IsMobile(),
+		doubleside:true,
+		vertical  :true,
+		element   :qS(".slider.ver .field"),
+		onscroll  :function(H) {
+			console.info("Slid3r.onscroll() ",H.getResult());
+			var res = parseInt(H.getResult());
+			if( res<0 ) res = res * (-1);
+			//
+			qS(".slider.ver .info").innerText = H.getResult()+"/"+res+" speed.";
+			//
+			if( sliderSpeedCon!=null ) {
+				return;
+			}
+			sliderSpeedCon = new AbortController();
+			//
+			if( sliderSpeedOn==false ) {
+				if( H.getResult()>0 ) {
+					Fetch({
+						href:document.location.origin+"/MOTOR_B_ON_FORWARD",
+						signal:sliderSpeedCon.signal,
+						ondone:function(json) {
+							sliderSpeedCon = null;
+						},
+						oncatch:function(E) { sliderSpeedCon=null; },
+					});
+				}
+				else {
+					Fetch({
+						href:document.location.origin+"/MOTOR_B_ON_BACKWARD",
+						signal:sliderSpeedCon.signal,
+						ondone:function(json) {
+							sliderSpeedCon = null;
+						},
+						oncatch:function(E) { sliderSpeedCon=null; },
+					});
+				}
+				sliderSpeedOn = true;
+			}
+			//
+			Fetch({
+				href:document.location.origin+"/MOTOR_B_SPEED?speedB="+res,
+				signal:sliderSpeedCon.signal,
+				ondone:function(json) {
+					sliderSpeedCon = null;
+				},
+				oncatch:function(E) { 
+					sliderSpeedCon=null;
+					console.warn("sliderSpeed->onscroll() Failed set speed",res); 
+				},
+			});
+		},
+		onstart:function(H) { 
+		},
+		onend:function(H) { 
+			sliderSpeedCon = null;
+		},
+		onended:function(H) { 
+			Fetch({
+				href:document.location.origin+"/MOTOR_B_OFF",
+				ondone:function(json) {
+					sliderSpeedCon=null;
+				},
+				oncatch:function(E) { 
+					sliderSpeedCon=null;
+					console.warn("sliderSpeed->onended() Failed."); 
+				},
+				
+			});
+			sliderSpeedOn = false;
+		},
+	}));
+	//
+	qS(".slider.ver .info").innerText = sliderSpeed.getResult()+" speed.";
+	
+	//--
+	//
+	qS("#test_left").addEventListener("click",function(e) {
+		e.preventDefault();
+		
+		console.info("test_left started!");
+		
+		Fetch({
+			href:document.location.origin+"/MOTOR_A_LEFT",
+			ondone:function(json) {
+				console.info("test_left ondone() started.",json);
+				qS("#d").innerText += "test_left => "+JSON.stringify(json)+"\n";
+			},
+			oncatch:function(E) { 
+				console.info("test_left oncatch() started.",E);
+			},
+		});
+		
+		e.stopPropagation();
+		return false;
+	});
+	//
+	qS("#test_right").addEventListener("click",function(e) {
+		e.preventDefault();
+		
+		console.info("test_right started!");
+		
+		Fetch({
+			href:document.location.origin+"/MOTOR_A_RIGHT",
+			ondone:function(json) {
+				console.info("test_right ondone() started.",json);
+				qS("#d").innerText += "test_right => "+JSON.stringify(json)+"\n";
+			},
+			oncatch:function(E) { 
+				console.info("test_right oncatch() started.",E);
+			},
+		});
+		
+		e.stopPropagation();
+		return false;
+	});
+	//
+	qS("#test_off").addEventListener("click",function(e) {
+		e.preventDefault();
+		
+		console.info("test_off started!");
+		
+		Fetch({
+			href:document.location.origin+"/MOTOR_A_OFF",
+			ondone:function(json) {
+				console.info("test_off ondone() started.",json);
+				qS("#d").innerText += "test_off => "+JSON.stringify(json)+"\n";
+			},
+			oncatch:function(E) { 
+				console.info("test_off oncatch() started.",E);
+			},
+		});
+		
+		e.stopPropagation();
+		return false;
+	});
+	
+	//--
+	// Show log
+	qS("a#dlog").addEventListener("click",function(e) {
+		console.info("a#dlog start.");
+		e.preventDefault();
+		var d = this.parentNode.querySelector("#d");
+		if( d.classList.contains("active") ) {
+			d.classList.remove("active");
+		}
+		else {
+			d.classList.add("active");
+		}
+		e.stopPropagation();
+		return false;
+	});
+}
+window.onload = function(e) { onLoad(e); }
+</script>
+	</head>
+	
+	<body>
+		
+		<div class="options">
+			<div class="menu">
+				<div style="position:relative;">
+					<a href="#" id="dlog">Log</a>
+					<div id="d"></div>
+				</div>
+				<!--<div><a href="/reset"><small>Reset panel</small></a></div>-->
+				<div><button id="test_left">Test Left</button></div>
+				<div><button id="test_off">Test Off</button></div>
+				<div><button id="test_right">Test Right</button></div>
+			</div>
+			<h3>ESP32 + L298N = Remote Car Panel</h3>
+			<div style="clear:both;"></div>
+		</div>
+		
+		<br>
+		
+		<!-- left side is used to move car forward and backward -->
+		<div class="leftSide">
+			<div>
+				<div class="slider ver">
+					<div>
+						<div class="field scrollit">
+							<div class="cover"></div>
+							<div class="space"></div>
+							<div class="info"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- right side is used to move car left and right -->
+		<div class="rightSide">
+			<div>
+				<div class="slider hor">
+					<div>
+						<div class="field scrollit">
+							<div class="cover"></div>
+							<div class="space"></div>
+							<div class="info"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<div style="position:fixed;bottom:0px;left:0px;right:0px;text-align:center;">
+	        <h6 style="margin:0px;">If you like our projects consider donating.</h6>
+	        <h4 style="margin:0px;">Donate - Welcome - Thanks!</h4>
+	        <a href="https://www.paypal.com/donate/?hosted_button_id=QGRYL4SL5N4FE"> Donate - Donar - Spenden - Daruj - пожертвовать - दान करना - 捐 - 寄付</a>
+        </div>
+	</body>
+</html>
