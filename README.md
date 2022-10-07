@@ -112,7 +112,7 @@ Thanks for watching.*
 
 ![alt text](https://github.com/m5it/http_panel/blob/main/screen5.png)
 
-![alt text](https://github.com/m5it/http_panel/blob/main/IMG_3228.MOV)
+[![Watch the video!](https://thumbs.dreamstime.com/b/r-149859581.jpg)](https://github.com/m5it/http_panel/blob/main/IMG_3228.MOV)
 
 # Donate - Welcome - Thanks!
 <a href="https://www.paypal.com/donate/?hosted_button_id=QGRYL4SL5N4FE"> Donate - Donar - Spenden - Daruj - пожертвовать - दान करना - 捐 - 寄付</a>
